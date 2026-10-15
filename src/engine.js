@@ -228,6 +228,7 @@ export function enlist(S, rules, enlistIso, rngFn) {
   const rf = rngFn || (() => rand(S));
   S.env = drawEnv(rf, rules.env, { branch: S.branch, mos: S.mos, enlistYm: S.ym, months });
   S.training = getTrainingCenter(rules, S.status, S.branch);
+  S.trainWeeks = S.status === 'officer' ? rules.service.officerEdu[S.route].weeks : rules.service.trainingWeeks[S.branch].w; // 훈련소 주차 일정용
   // 주특기 메카닉 프로필 (leave·difficulty·injuryRisk 전부 가정 — rules/soldier-mos.json)
   S.mosMech = S.status === 'soldier' ? rules.soldierMos?.[S.branch]?.[S.mos] ?? null : null;
   // 주특기별 휴가 보정 (가정): leave 지수 3 → +20%, 2 → 그대로, 1 → −20%
@@ -329,6 +330,7 @@ export function chooseFeed(S, events = []) {
   const season = month === 12 || month <= 2 ? 'winter' : month <= 5 ? 'spring' : month <= 8 ? 'summer' : 'autumn';
   const pool = [];
   for (const e of events) {
+    if (e.week != null) continue; // 주차 일정은 planMonth가 배치
     const when = e.when || {};
     if (when.phase && !when.phase.includes(S.phase)) continue;
     if (when.months && !when.months.includes(month)) continue;
@@ -393,6 +395,16 @@ export function planMonth(S, rules, events = []) {
   }
   if (S.phase === 'train' || S.phase === 'serve') {
     S.queue.push({ at: 0.85, kind: 'pay' }); // 전역(0.9)보다 먼저 — 마지막 달 적금도 만기에 포함
+  }
+  // 훈련소 주차 일정: week(N주차, 1~trainWeeks)를 훈련 페이즈 전체 길이에 비례해 펼쳐 고정 배치
+  if (S.phase === 'train') {
+    const m = monthsBetweenYm(S.dates.enlist.slice(0, 7), ym);
+    const M = getTrainingMonths(rules, S.branch, S.status, S.route);
+    for (const e of events) {
+      if (e.week == null) continue;
+      const t = (Math.min(typeof e.week === 'function' ? e.week(S) : e.week, S.trainWeeks + 0.45) - 0.5) / S.trainWeeks * M;
+      if (Math.floor(t) === m) S.queue.push({ at: t - m, kind: e.kind, id: e.id, ref: e });
+    }
   }
   for (const item of chooseFeed(S, events)) S.queue.push(item);
   S.queue.sort((a, b) => a.at - b.at);
