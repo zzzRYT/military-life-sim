@@ -1,0 +1,1 @@
+{"description":"군 생활 시뮬레이터 - M1 엔진 (의존성 0, 정적 웹)","name":"military-life-sim","scripts":{"test":"node --test"},"type":"module","version":"0.1.0"}
