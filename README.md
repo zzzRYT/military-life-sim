@@ -10,6 +10,7 @@
 | [docs/01-product-spec.md](docs/01-product-spec.md) | 설계 문서: 한 판의 흐름, 입영 연기, 신분·군종·경로·특기 추첨, 복무 규칙, 사건, 엔딩 |
 | [docs/02-ux-design.md](docs/02-ux-design.md) | 디자인 문서: 화면 목록, 메인 레이아웃, 결정 모달 문법, 잠시 멈춤, 엔딩, 시각 체계 |
 | [docs/03-dev-design.md](docs/03-dev-design.md) | 개발 설계: 구조, 데이터 형, 날짜 엔진(민법 160조), 시간 엔진, 추첨, 저장, 테스트, 마일스톤 |
+| [docs/04-narrative-design.md](docs/04-narrative-design.md) | 서사 설계: 흔적·줄기·되부르기·연출 감독, 판마다 다른 이야기를 위한 지표와 단계 |
 | [research/official.md](research/official.md) | 병무청·국방부·법령 공식 데이터 조사 (출처 코드 `[Sx]`) |
 
 ## 지원 타입
