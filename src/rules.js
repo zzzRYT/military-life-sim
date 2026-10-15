@@ -22,6 +22,7 @@ export function loadRules(dir = join(here, '..', 'rules')) {
     training: read('training.json'),
     soldierMos: read('soldier-mos.json'),
     hobbies: read('hobbies.json'),
+    sources: read('sources.json'),
   };
 }
 
@@ -46,9 +47,9 @@ export function getServiceMonths(rules, status, branch, route) {
   throw new Error(`getServiceMonths: unknown status ${status}`);
 }
 
-/** 양성교육 개월 수 (주 → 월 환산, 올림). 육군 5주 → 2개월. 장교는 경로별 양성교육+초군반 (officerEdu) */
-export function getTrainingMonths(rules, branch, status, route) {
-  const weeks = status === 'officer' ? rules.service.officerEdu[route]?.weeks : rules.service.trainingWeeks[branch]?.w;
+/** 양성교육 개월 수 (주 → 월 환산, 올림). 육군 5주 → 2개월 */
+export function getTrainingMonths(rules, branch) {
+  const weeks = rules.service.trainingWeeks[branch]?.w;
   if (!weeks) throw new Error(`getTrainingMonths: unknown branch ${branch}`);
   return Math.max(1, Math.ceil(weeks / 4.34524));
 }
@@ -75,15 +76,15 @@ export function getMonthlyPay(rules, status, rank = 0) {
     if (!e) throw new Error(`getMonthlyPay: unknown soldier rank ${rank}`);
     return e.m;
   }
-  if (status === 'nco') return (rank ? rules.pay.nco1.staffSergeant : rules.pay.nco1.sergeant).m; // 중사 초임 예외 (rules.promotion.startException)
+  if (status === 'nco') return rules.pay.nco1.sergeant.m;
   if (status === 'officer') return rules.pay.officer1.secondLieutenant.m;
   if (status === 'warrant') return rules.pay.warrant1.warrantOfficer.m;
   throw new Error(`getMonthlyPay: unknown status ${status}`);
 }
 
-/** 계급명. rank는 신분별 rules.promotion[status].rankNames 인덱스 (병 0=이병, 부사관 0=하사, 장교 0=소위) */
-export function rankName(rules, status, rank) {
-  return rules.promotion[status]?.rankNames?.[rank] ?? `rank${rank}`;
+/** 병 계급명 */
+export function soldierRankName(rules, rank) {
+  return rules.promotion.soldier.rankNames[rank] ?? `rank${rank}`;
 }
 
 /**
