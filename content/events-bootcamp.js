@@ -27,13 +27,13 @@ const CURRICULUM = [
   { id: 'boot_w3_rifle', week: 3, run: (S) => {
     const p = 0.25 + 0.6 * (S.train.marksman / 100); // 사격술 숙련도 → 명중
     drill(S, 'marksman', 8);
-    if (roll(S, p)) return { t: '영점사격·실거리사격 — 20발 중 18발. 조교가 이름을 물었고, 포상으로 전화 5분을 받았습니다.', fx: { mind: 8, skill: 3 } };
-    if (roll(S, 0.5)) return { t: '영점이 안 잡혀 세 번을 다시 쐈습니다. 귀가 한참 멍했습니다.', fx: { mind: -4 } };
+    if (roll(S, p)) return { t: '영점사격·실거리사격 — 20발 중 18발. 조교가 이름을 물었고, 포상으로 전화 5분을 받았습니다.', fx: { mind: 8, skill: 3 }, mark: { set: { rifle_ace: {} } } };
+    if (roll(S, 0.5)) return { t: '영점이 안 잡혀 세 번을 다시 쐈습니다. 귀가 한참 멍했습니다.', fx: { mind: -4 }, mark: { set: { rifle_poor: {} } } };
     return { t: '실거리사격 합격선을 겨우 넘겼습니다. 탄피를 줍다 손가락을 데었습니다.', fx: { mind: -2 } };
   } },
   { id: 'boot_w3_gas', week: 3, run: (S) => {
     if (S.branch === 'navy') return { t: '함정 생존훈련 — 물이 차오르는 격실에서 방수 작업을 했습니다. 다 젖은 채 점호를 받았습니다.', fx: { fit: 3, mind: -5 } };
-    if (roll(S, 0.2)) return { t: '화생방 — 가스실에서 방독면을 벗자마자 뛰쳐나갔습니다. 조교에게 붙잡혀 다시 들어갔습니다.', fx: { mind: -9 } };
+    if (roll(S, 0.2)) return { t: '화생방 — 가스실에서 방독면을 벗자마자 뛰쳐나갔습니다. 조교에게 붙잡혀 다시 들어갔습니다.', fx: { mind: -9 }, mark: { set: { gas_fled: {} } } };
     return { t: '화생방 — 가스실에서 방독면을 벗고 군번과 이름을 외쳤습니다. 눈물 콧물이 한참 멈추지 않았습니다.', fx: { mind: -5 } };
   } },
   { id: 'boot_w4_combat', week: 4, run: (S) => {
@@ -46,34 +46,35 @@ const CURRICULUM = [
   { id: 'boot_w5_march', week: (S) => (S.branch === 'marine' ? 5 : 4.6), run: (S) => {
     drill(S, 'fitness', 8);
     const name = S.branch === 'marine' ? '극기주 천자봉 행군' : '야간 행군 20km';
-    if (S.st.fit >= 65) return { t: `${name} — 완주했습니다. 마지막 언덕에서 군가를 불렀습니다.`, fx: { mind: 6 } };
+    if (S.st.fit >= 65) return { t: `${name} — 완주했습니다. 마지막 언덕에서 군가를 불렀습니다.`, fx: { mind: 6 }, mark: { set: { march_strong: {} } } };
     if (roll(S, 0.75)) return { t: `${name} — 발에 물집이 세 개 터졌지만 끝까지 걸었습니다.`, fx: { fit: -3, mind: 3 } };
-    return { t: `${name} — 도중에 낙오해 구급차에 실렸습니다. 동기들보다 하루 늦게 숙영지에 돌아갔습니다.`, fx: { fit: -6, mind: -8 } };
+    return { t: `${name} — 도중에 낙오해 구급차에 실렸습니다. 동기들보다 하루 늦게 숙영지에 돌아갔습니다.`, fx: { fit: -6, mind: -8 }, mark: { set: { march_dropout: {} } } };
   } },
   { id: 'boot_last_graduate', week: Infinity, run: (S) => {
-    const name = S.status === 'officer' ? '임관식' : S.branch === 'marine' ? '빨간 명찰 수여식' : '수료식';
-    const pin = S.status === 'officer' ? '어깨에 계급장을' : S.branch === 'marine' ? '가슴에 빨간 명찰을' : '가슴에 이병 계급장을';
-    if (S.bonds?.lover != null && roll(S, 0.6)) { addBond(S, 'lover', 10); return { t: `${name} — 여자친구가 ${pin} 달아 줬습니다. 꽃다발을 받았습니다.`, fx: { mind: 12 } }; }
-    if (roll(S, 0.8)) { addBond(S, 'family', 10); return { t: `${name} — 부모님이 ${pin} 달아 주셨습니다. 부대 앞 식당에서 고기를 먹었습니다.`, fx: { mind: 8 } }; }
-    return { t: `${name} — 아무도 오지 못했습니다. 동기 부모님이 같이 밥을 사 주셨습니다.`, fx: { mind: 2 } };
+    const cadre = S.status !== 'soldier';
+    const name = cadre ? '임관식' : S.branch === 'marine' ? '빨간 명찰 수여식' : '수료식';
+    const pin = cadre ? '어깨에 계급장을' : S.branch === 'marine' ? '가슴에 빨간 명찰을' : '가슴에 이병 계급장을';
+    if (S.bonds?.lover != null && roll(S, 0.6)) { addBond(S, 'lover', 10); return { t: `${name} — 여자친구가 ${pin} 달아 줬습니다. 꽃다발을 받았습니다.`, fx: { mind: 12 }, mark: { set: { grad_lover: {} } } }; }
+    if (roll(S, 0.8)) { addBond(S, 'family', 10); return { t: `${name} — 부모님이 ${pin} 달아 주셨습니다. 부대 앞 식당에서 고기를 먹었습니다.`, fx: { mind: 8 }, mark: { set: { grad_family: {} } } }; }
+    return { t: `${name} — 아무도 오지 못했습니다. 동기 부모님이 같이 밥을 사 주셨습니다.`, fx: { mind: 2 }, mark: { set: { grad_alone: {} } } };
   } },
 ].map((e) => ({ ...T, kind: 'event', ...e }));
 
 /** 훈련소 무작위 사건 — 한 판에 한 번씩 (gap 99) */
 const ISSUES = [
-  { id: 'boot_cold', w: 4, run: () => ({ t: '생활관에 감기가 돌았습니다. 밤새 기침 소리에 잠을 설쳤고, 결국 나도 옮았습니다.', fx: { fit: -6, mind: -3 } }) },
+  { id: 'boot_cold', w: 4, run: () => ({ t: '생활관에 감기가 돌았습니다. 밤새 기침 소리에 잠을 설쳤고, 결국 나도 옮았습니다.', fx: { fit: -6, mind: -3 }, mark: { set: { boot_cold: {} } } }) },
   { id: 'boot_letter', w: 4, run: (S) => {
     const from = S.bonds?.lover != null ? '여자친구' : '어머니';
     addBond(S, S.bonds?.lover != null ? 'lover' : 'family', 6);
-    return { t: `${from}에게서 인터넷 편지가 왔습니다. 소대장이 이름을 부를 때 얼굴이 달아올랐습니다. 불 끄고 몇 번이고 다시 읽었습니다.`, fx: { mind: 10 } };
+    return { t: `${from}에게서 인터넷 편지가 왔습니다. 소대장이 이름을 부를 때 얼굴이 달아올랐습니다. 불 끄고 몇 번이고 다시 읽었습니다.`, fx: { mind: 10 }, mark: { set: { [S.bonds?.lover != null ? 'letter_lover' : 'letter_mom']: {} } } };
   } },
   { id: 'boot_night_watch', w: 3, run: (S) => ({ t: pick(S, [
     '불침번 두 시간. 돌아와 누우니 옆 동기의 코골이에 다시 잠들 수 없었습니다.',
     '불침번 교대자를 깨우는데 아무리 흔들어도 일어나지 않았습니다. 결국 한 시간을 더 섰습니다.',
   ]), fx: { mind: -4, fit: -2 } }) },
   { id: 'boot_phone', w: 3, run: () => ({ t: '일주일에 한 번 주어지는 공중전화 3분. 줄이 길어 1분 만에 "잘 지내"만 하고 끊었습니다.', fx: { mind: -2 } }) },
-  { id: 'boot_group_punish', w: 3, run: (S) => ({ t: `동기 한 명이 총기 번호를 틀려 생활관 전체가 군기훈련을 받았습니다. ${pick(S, ['그 동기는 밤새 미안하다고 했습니다.', '아무도 그 동기와 말하지 않았습니다.'])}`, fx: { fit: 2, mind: -6 } }) },
-  { id: 'boot_dropout', w: 2, run: () => ({ t: '같은 생활관 동기 한 명이 귀가 조치됐습니다. 아침에 보니 빈 침상만 남아 있었습니다.', fx: { mind: -5 } }) },
+  { id: 'boot_group_punish', w: 3, run: (S) => ({ t: `동기 한 명이 총기 번호를 틀려 생활관 전체가 군기훈련을 받았습니다. ${pick(S, ['그 동기는 밤새 미안하다고 했습니다.', '아무도 그 동기와 말하지 않았습니다.'])}`, fx: { fit: 2, mind: -6 }, mark: { set: { group_punish: {} } } }) },
+  { id: 'boot_dropout', w: 2, run: () => ({ t: '같은 생활관 동기 한 명이 귀가 조치됐습니다. 아침에 보니 빈 침상만 남아 있었습니다.', fx: { mind: -5 }, mark: { set: { peer_dropout: {} } } }) },
   { id: 'boot_craving', w: 3, run: (S) => ({ t: pick(S, [
     '훈련소엔 PX가 없습니다. 꿈에 치킨이 나왔습니다.',
     '담배 생각에 손이 떨렸습니다. 동기들이 껌 대신 이를 악물라고 했습니다.',
@@ -93,11 +94,11 @@ const DECISIONS = [
       ],
     }),
     apply: (S, k) => {
-      if (k === 'no') return { t: '가만히 있었습니다. 다른 동기가 분대장이 됐습니다.' };
+      if (k === 'no') return { t: '가만히 있었습니다. 다른 동기가 분대장이 됐습니다.', mark: { set: { boot_quiet: {} } } };
       drill(S, 'leadership', 15);
       return roll(S, 0.5)
-        ? { t: '분대장을 맡았습니다. 수료식 날 조교가 "고생했다"고 했습니다.', fx: { mind: 6, skill: 3 } }
-        : { t: '분대장을 맡았습니다. 동기들 대신 혼나는 날이 더 많았습니다.', fx: { mind: -6, skill: 3 } };
+        ? { t: '분대장을 맡았습니다. 수료식 날 조교가 "고생했다"고 했습니다.', fx: { mind: 6, skill: 3 }, mark: { set: { boot_squad_leader: { good: true } } } }
+        : { t: '분대장을 맡았습니다. 동기들 대신 혼나는 날이 더 많았습니다.', fx: { mind: -6, skill: 3 }, mark: { set: { boot_squad_leader: { good: false } } } };
     } },
   { id: 'boot_religion', w: 3,
     build: () => ({
@@ -110,12 +111,12 @@ const DECISIONS = [
         { k: 'none', label: '생활관에 남는다', hint: '쉰다 · 청소 당번이 된다' },
       ],
     }),
-    apply: (S, k) => ({
+    apply: (S, k) => ({ ...{
       church: { t: '교회에서 초코파이 두 개와 콜라를 받았습니다. 세상에서 가장 맛있었습니다.', fx: { mind: 6 } },
       catholic: { t: '성당에서 빵을 받고, 오랜만에 조용히 앉아 있었습니다.', fx: { mind: 5 } },
       temple: { t: '법당에서 떡을 먹고 10분 명상을 했습니다. 졸았습니다.', fx: { mind: 5 } },
       none: { t: '생활관에 남았다가 화장실 청소를 했습니다.', fx: { mind: 1, fit: 1 } },
-    })[k] },
+    }[k], mark: { set: { religion: { v: k } } } }) },
   { id: 'boot_sick_call', w: 3,
     build: () => ({
       title: '발목이 시큰하다',
@@ -126,10 +127,10 @@ const DECISIONS = [
       ],
     }),
     apply: (S, k) => {
-      if (k === 'go') return { t: '의무대에서 파스와 진통제를 받았습니다. 하루 쉬니 한결 나았습니다.', fx: { fit: 3, mind: -1 } };
+      if (k === 'go') return { t: '의무대에서 파스와 진통제를 받았습니다. 하루 쉬니 한결 나았습니다.', fx: { fit: 3, mind: -1 }, mark: { set: { sick_call: {} } } };
       return roll(S, 0.35)
-        ? { t: '참다가 결국 발목이 부었습니다. 남은 훈련 내내 절뚝였습니다.', fx: { fit: -8, mind: -4 } }
-        : { t: '참았습니다. 며칠 지나니 괜찮아졌습니다.', fx: { mind: 2 } };
+        ? { t: '참다가 결국 발목이 부었습니다. 남은 훈련 내내 절뚝였습니다.', fx: { fit: -8, mind: -4 }, mark: { set: { ankle: { v: 2 } } } }
+        : { t: '참았습니다. 며칠 지나니 괜찮아졌습니다.', fx: { mind: 2 }, mark: { set: { ankle: { v: 1 } } } };
     } },
 ].map((e) => ({ ...T, kind: 'decision', ...e }));
 

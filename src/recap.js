@@ -11,7 +11,7 @@ const NOISE = /^월급 |^특별한 일 없이 한 달이/; // 월급·조용한 
 /** 로그 → 주마등 슬라이드. 이정표는 전부, 나머지 사건은 고르게 뽑아 max장까지 */
 export function pickReel(log, max = 14) {
   const lines = log.filter((l) => !NOISE.test(l.text));
-  const keep = new Set(lines.filter((l) => l.decision || MILESTONE.test(l.text)));
+  const keep = new Set(lines.filter((l) => l.decision || l.echo || MILESTONE.test(l.text))); // echo: 되부르기 줄
   const rest = lines.filter((l) => !keep.has(l));
   const room = Math.max(0, max - keep.size);
   for (let i = 0; i < room && i < rest.length; i++) keep.add(rest[Math.floor((i * rest.length) / Math.min(room, rest.length))]);

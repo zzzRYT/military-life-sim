@@ -50,6 +50,7 @@ dd { margin: 0; }
 .stat { display: grid; grid-template-columns: 36px 1fr 28px; gap: 6px; align-items: center; font-size: 13px; margin-top: 4px; }
 .stat .bar { margin: 0; height: 6px; }
 #log { list-style: none; padding: 0; margin: 12px 0 0; max-height: 360px; overflow-y: auto; font-size: 14px; }
+.echo { color: var(--muted); font-size: 12px; white-space: nowrap; }
 #log li { padding: 4px 0; border-bottom: 1px dashed var(--line); display: grid; grid-template-columns: 72px 1fr; gap: 8px; }
 #log .ym { color: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: 12px; }
 #map { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
@@ -373,7 +374,7 @@ function render() {
   const dleft = Math.max(0, Math.round((dis - now) / 864e5));
   const pct = Math.min(100, Math.max(0, ((now - enl) / (dis - enl)) * 100));
   const rank = S.status === 'officer' && S.phase === 'train' ? '사관후보생' : rankName(rules, S.status, S.rank);
-  const END = { court: '복무 중단', medical: '의병 전역', unfit: '부적합 전역', family: '의가사 전역', shortened: '단축 전역' };
+  const END = { court: '복무 중단', medical: '의병 전역', unfit: '부적합 전역', family: '의가사 전역', shortened: '단축 전역', longTerm: '장기 선발' };
   $('dday').textContent = S.ending ? END[S.ending] : S.phase === 'end' ? '전역' : `D-${dleft}`;
   $('subline').textContent = `${rank} · ${fmtYm(S.ym)} · ${S.status === 'officer' && S.phase === 'train' ? '임관 교육' : PHASE[S.phase]} · 1개월 ≈ ${Math.round(msPerMonth() / 1000 / (speed || 1))}초`;
   $('prog').style.width = pct + '%';
@@ -399,7 +400,7 @@ function render() {
   const roleName = { senior: '맞선임', roomSenior: '생활관 선임', peer: '동기', sfc: '행보관', lt: '소대장' };
   $('people').innerHTML = S.env.people.map((p) => `<dt>${roleName[p.role]}</dt><dd>${p.label} <span class="mono sub">${Math.round(p.rel)}</span></dd>`).join('');
   $('map').innerHTML = monthCells.map((c) => `<span title="${fmtYm(c.ym)}" style="background:color-mix(in srgb, var(--accent) ${c.mood}%, var(--line))">${c.icon}</span>`).join('');
-  $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text}</span></li>`).join('');
+  $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text}${l.echo ? ` <small class="echo">← ${fmtYm(l.echo)}</small>` : ''}</span></li>`).join(''); // echo: 되부르기 원래 흔적의 연월
   for (const b of document.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String(+b.dataset.speed === speed));
   $('auto').setAttribute('aria-pressed', String(auto));
   drawScene(); drawAvatar();
