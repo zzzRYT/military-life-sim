@@ -264,7 +264,7 @@ export const EVENTS = [
       ],
     }),
     apply: (S, k) => {
-      if (k === 'counsel') return { t: S.status === 'soldier' ? '상담관과 이야기했습니다. 관심병사로 지정되어 한동안 배려를 받았습니다.' : '상담관과 이야기했습니다. 한동안 당직에서 빠지고 업무를 줄였습니다.', fx: { mind: 15 } };
+      if (k === 'counsel') return { t: '상담관과 이야기했습니다. 관심병사로 지정되어 한동안 배려를 받았습니다.', fx: { mind: 15 } };
       if (k === 'endure') return { t: '이를 악물고 하루를 넘겼습니다.', fx: { mind: -3 } };
       // 탈영: 이틀 안 자진 복귀(무단이탈 처리) vs 체포 후 군사재판 (가정 50:50)
       if (roll(S, 0.5)) return { t: '이틀 만에 스스로 돌아왔습니다. 무단이탈로 처리되었습니다.', fx: { mind: -5 }, punish: { kind: 'drill', n: 15 }, ban: 1 };
@@ -294,15 +294,11 @@ export const EVENTS = [
 import { SOLDIER_EVENTS } from './events-soldier.js';
 import { HOBBY_BOND_EVENTS } from './events-hobby-bonds.js';
 import { BOOTCAMP_EVENTS } from './events-bootcamp.js';
-import { CADRE_EVENTS } from './events-cadre.js';
 import { ECHOES } from './echoes.js';
 import { PLACE_EVENTS, PLACE_ECHOES } from './events-place.js';
-EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...CADRE_EVENTS, ...PLACE_EVENTS);
+EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS);
 
-// 병 전용 사건 (간부에겐 맞지 않는 상황·제도): 선임에게 혼남, 내일준비적금(병 전용), 병 휴대폰 규정, 병역법상 병 전역 사유, 나이 차 (docs/04 §11)
-const SOLDIER_ONLY = ['rough_day', 'savings', 'phone', 'unfit_review', 'family_hardship', 'old_brother', 'young_one', 'bond_easy_military'];
 for (const e of EVENTS) {
-  if (SOLDIER_ONLY.includes(e.id)) e.when = { ...e.when, status: ['soldier'] };
   const echo = [...(ECHOES[e.id] ?? []), ...(PLACE_ECHOES[e.id] ?? [])]; // 흔적 문구가 먼저, 지역 문구는 그다음
   if (echo.length) e.echo = echo;
 }

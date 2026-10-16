@@ -11,7 +11,6 @@ const pick = (S, xs) => xs[Math.floor(rand(S) * xs.length)];
 const served = (S) => (S.flags.serveYm ? monthsBetweenYm(S.flags.serveYm, S.ym) : -1);
 const where = (S) => S.env.place?.label ?? '';
 const town = (S) => where(S).split('·')[0].split(' ').pop(); // '강원 춘천' → '춘천', '광주·전남' → '광주'
-const soldier = (S) => S.status === 'soldier';
 const P = (e) => ({ src: '가정', gap: 6, ...e, when: { phase: ['serve'], ...e.when } });
 
 export const PLACE_EVENTS = [
@@ -117,14 +116,14 @@ export const PLACE_EVENTS = [
   P({ id: 'place_cherry', kind: 'event', w: 6, gap: 12, when: { place: ['cherry'], months: [4] },
     run: () => ({ t: '군항제 기간. 부대가 개방돼 벚꽃 사이로 관광객이 몰렸습니다. 사진 찍어 달라는 부탁을 수십 번 받았습니다.', fx: { mind: 3 } }) }),
 
-  // ── 외출·면회: 지역에 따라 갈 곳과 올 사람이 다르다 (병 기준) ──
-  P({ id: 'place_town_out', kind: 'event', w: 3, gap: 10, when: { place: ['town'], status: ['soldier'] },
+  // ── 외출·면회: 지역에 따라 갈 곳과 올 사람이 다르다 ──
+  P({ id: 'place_town_out', kind: 'event', w: 3, gap: 10, when: { place: ['town'] },
     run: (S) => ({ t: pick(S, [
       '외출. 갈 곳은 읍내 PC방, 치킨집, 다시 PC방. 가게마다 군인뿐이고 값은 서울보다 비쌌습니다.',
       '외출. 읍내 유일한 카페에 들어가니 손님이 전부 같은 부대였습니다. 서로 못 본 척했습니다.',
       `외출. ${town(S)} 터미널 앞 분식집 아주머니가 "또 왔네" 하며 떡볶이를 더 얹어 줬습니다.`,
     ]), fx: { mind: 2 } }) }),
-  P({ id: 'place_city_out', kind: 'event', w: 3, gap: 10, when: { place: ['city'], status: ['soldier'] },
+  P({ id: 'place_city_out', kind: 'event', w: 3, gap: 10, when: { place: ['city'] },
     run: (S) => ({ t: pick(S, [
       `외출. 버스로 20분이면 ${town(S)} 시내입니다. 영화 한 편 보고 맛집에서 밥을 먹었습니다. 잠깐 군인인 걸 잊었습니다.`,
       `외출. ${town(S)} 시내 서점에서 두 시간을 보냈습니다. 복귀 버스에서 산 책을 절반 읽었습니다.`,
@@ -134,9 +133,7 @@ export const PLACE_EVENTS = [
     run: () => ({ t: '외출해 보니 거리가 관광객으로 가득했습니다. 남들은 여행 오는 곳에서 군 생활을 한다는 게 묘했습니다.', fx: { mind: 3 } }) }),
   P({ id: 'place_near_home', kind: 'event', w: 3, gap: 10, when: { place: ['capital'] },
     c: (S) => S.env.place?.travel <= 2,
-    run: (S) => ({ t: soldier(S)
-      ? '부모님이 주말에 면회를 왔습니다. 집에서 한 시간 반. 가방 가득 반찬을 싸 오셨습니다.'
-      : '퇴근하고 본가에 들러 저녁을 먹고 왔습니다. 한 시간 반 거리라 가능한 호사입니다.', fx: { mind: 5 } }) }),
+    run: () => ({ t: '부모님이 주말에 면회를 왔습니다. 집에서 한 시간 반. 가방 가득 반찬을 싸 오셨습니다.', fx: { mind: 5 } }) }),
   P({ id: 'place_far_home', kind: 'event', w: 2, gap: 12,
     c: (S) => S.env.place?.travel >= 4 && S.leave.left > 0 && !placeIs(S, 'island'),
     run: (S) => ({ t: S.flags.n_place_far_home

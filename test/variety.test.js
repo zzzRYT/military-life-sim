@@ -35,12 +35,3 @@ test('variety: 병사 — 되부르기 판당 4줄 이상, 흔적을 읽는 발�
   assert.ok(m.readShare >= 0.15, `reads ${m.readShare}`);
   assert.ok(m.jaccard <= 0.7, `jaccard ${m.jaccard}`); // N5 목표 0.40 — 줄기(N3) 전까지는 회귀만 막는다
 });
-
-test('variety: 간부 — 조용한 달 20% 이하, 흔적을 읽는 발생 15% 이상', () => {
-  for (const status of ['officer', 'nco']) {
-    const m = measure(status, 20);
-    console.log(status, m);
-    assert.ok(m.quietShare <= 0.2, `${status} quiet ${m.quietShare}`);
-    assert.ok(m.readShare >= 0.15, `${status} reads ${m.readShare}`);
-  }
-});

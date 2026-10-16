@@ -6,7 +6,6 @@ import { rand } from '../src/engine.js';
 
 const roll = (S, p) => rand(S) < p;
 const pick = (S, xs) => xs[Math.floor(rand(S) * xs.length)];
-const who = (S) => (S.status === 'officer' ? '후보생' : '훈련병');
 const drill = (S, k, d) => { S.train[k] = Math.min(100, (S.train[k] ?? 0) + d); }; // 훈련소 숙련도 (TRAINING 키)
 const addBond = (S, k, d) => { if (S.bonds?.[k] != null) S.bonds[k] = Math.max(0, Math.min(100, S.bonds[k] + d)); };
 const T = { when: { phase: ['train'] }, src: '가정' };
@@ -22,7 +21,7 @@ const CURRICULUM = [
   } },
   { id: 'boot_w2_basic', week: 2, run: (S) => {
     drill(S, 'foot', 8); drill(S, 'marksman', 5);
-    return { t: `제식과 사격술 예비훈련(PRI). 팔이 떨어질 것 같았지만 ${who(S)} 티는 조금 벗었습니다.`, fx: { fit: 3, mind: -3 } };
+    return { t: `제식과 사격술 예비훈련(PRI). 팔이 떨어질 것 같았지만 훈련병 티는 조금 벗었습니다.`, fx: { fit: 3, mind: -3 } };
   } },
   { id: 'boot_w3_rifle', week: 3, run: (S) => {
     const p = 0.25 + 0.6 * (S.train.marksman / 100); // 사격술 숙련도 → 명중
@@ -51,9 +50,8 @@ const CURRICULUM = [
     return { t: `${name} — 도중에 낙오해 구급차에 실렸습니다. 동기들보다 하루 늦게 숙영지에 돌아갔습니다.`, fx: { fit: -6, mind: -8 }, mark: { set: { march_dropout: {} } } };
   } },
   { id: 'boot_last_graduate', week: Infinity, run: (S) => {
-    const cadre = S.status !== 'soldier';
-    const name = cadre ? '임관식' : S.branch === 'marine' ? '빨간 명찰 수여식' : '수료식';
-    const pin = cadre ? '어깨에 계급장을' : S.branch === 'marine' ? '가슴에 빨간 명찰을' : '가슴에 이병 계급장을';
+    const name = S.branch === 'marine' ? '빨간 명찰 수여식' : '수료식';
+    const pin = S.branch === 'marine' ? '가슴에 빨간 명찰을' : '가슴에 이병 계급장을';
     if (S.bonds?.lover != null && roll(S, 0.6)) { addBond(S, 'lover', 10); return { t: `${name} — 여자친구가 ${pin} 달아 줬습니다. 꽃다발을 받았습니다.`, fx: { mind: 12 }, mark: { set: { grad_lover: {} } } }; }
     if (roll(S, 0.8)) { addBond(S, 'family', 10); return { t: `${name} — 부모님이 ${pin} 달아 주셨습니다. 부대 앞 식당에서 고기를 먹었습니다.`, fx: { mind: 8 }, mark: { set: { grad_family: {} } } }; }
     return { t: `${name} — 아무도 오지 못했습니다. 동기 부모님이 같이 밥을 사 주셨습니다.`, fx: { mind: 2 }, mark: { set: { grad_alone: {} } } };
@@ -79,15 +77,15 @@ const ISSUES = [
     '훈련소엔 PX가 없습니다. 꿈에 치킨이 나왔습니다.',
     '담배 생각에 손이 떨렸습니다. 동기들이 껌 대신 이를 악물라고 했습니다.',
   ]), fx: { mind: -3 } }) },
-  { id: 'boot_age', w: 2, c: (S) => (S.flags.ageGap ?? 0) >= 3, run: (S) => ({ t: `동기들이 "아저씨"라고 불렀습니다. 한참 어린 분대장 ${who(S)}에게 혼나는 건 묘한 기분이었습니다.`, fx: { mind: -3 } }) },
+  { id: 'boot_age', w: 2, c: (S) => (S.flags.ageGap ?? 0) >= 3, run: (S) => ({ t: `동기들이 "아저씨"라고 불렀습니다. 한참 어린 분대장 훈련병에게 혼나는 건 묘한 기분이었습니다.`, fx: { mind: -3 } }) },
 ].map((e) => ({ ...T, kind: 'event', gap: 99, ...e }));
 
 /** 훈련소 결정 — 한 판에 한 번씩 (decision 기본 max 1) */
 const DECISIONS = [
   { id: 'boot_squad_leader', w: 3,
     build: (S) => ({
-      title: `분대장 ${who(S)}, 손 들까?`,
-      body: `조교가 "분대장 ${who(S)} 할 사람"이라고 묻습니다. 생활관이 조용해졌습니다.`,
+      title: `분대장 훈련병, 손 들까?`,
+      body: `조교가 "분대장 훈련병 할 사람"이라고 묻습니다. 생활관이 조용해졌습니다.`,
       choices: [
         { k: 'no', label: '가만히 있는다', hint: '튀지 않는 게 최고' },
         { k: 'yes', label: '손을 든다', hint: '통솔력↑ · 동기들 몫까지 혼난다' },

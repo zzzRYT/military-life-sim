@@ -39,36 +39,10 @@ test('rules: 군종별 병 복무개월 18/20/21/18', () => {
   assert.equal(getServiceMonths(rules, 'soldier', 'marine'), 18);
 });
 
-test('rules: 간부 의무복무 개월', () => {
-  assert.equal(getServiceMonths(rules, 'nco', 'army', 'nco_short'), 48);
-  assert.equal(getServiceMonths(rules, 'nco', 'army', 'nco_long'), 84);
-  assert.equal(getServiceMonths(rules, 'officer', 'army', 'academy'), 120);
-  assert.equal(getServiceMonths(rules, 'officer', 'army', 'kma3'), 72);
-  assert.equal(getServiceMonths(rules, 'officer', 'army', 'rotc'), 28);
-  assert.equal(getServiceMonths(rules, 'officer', 'army', 'bachelor'), 36);
-  assert.equal(getServiceMonths(rules, 'warrant', 'army', 'warrant'), 60);
-});
-
 test('rules: 병 진급 2-6-6', () => {
   const months = rules.promotion.soldier.steps.map((s) => s.months);
   assert.deepEqual(months, [2, 6, 6]);
   assert.deepEqual(rules.promotion.soldier.rankNames, ['이병', '일병', '상병', '병장']);
-});
-
-test('rules: 정년표 (군인사법 제8조)', () => {
-  const o = rules.retirement.officer;
-  assert.equal(o.colonel.age, 56);
-  assert.equal(o.colonel.serviceYears, 35);
-  assert.equal(o.secondLieutenant.age, 43);
-  assert.equal(o.secondLieutenant.serviceYears, 15);
-  assert.equal(o.general.age, 63);
-  const n = rules.retirement.nco;
-  assert.equal(n.sergeant.age, 40);
-  assert.equal(n.staffSergeant.age, 45);
-  assert.equal(n.masterSergeant.age, 53);
-  assert.equal(n.sergeantMajor.age, 55);
-  assert.equal(rules.retirement.warrant.warrantOfficer.age, 55);
-  assert.equal(rules.retirement.warrant.warrantOfficer.serviceYears, 32);
 });
 
 test('rules: 병 봉급 (공무원보수규정 별표 13)', () => {
@@ -80,7 +54,7 @@ test('rules: 병 봉급 (공무원보수규정 별표 13)', () => {
 
 test('rules: 모든 가중치 테이블의 합 > 0', () => {
   const tables = collectTables(rules.weights);
-  assert.ok(tables.length > 10, `weight tables found: ${tables.length}`);
+  assert.ok(tables.length >= 5, `weight tables found: ${tables.length}`);
   for (const { path, table } of tables) {
     const entries = Object.entries(table).filter(([k]) => !k.startsWith('_'));
     const sum = entries.reduce((a, [, v]) => a + v.w, 0);

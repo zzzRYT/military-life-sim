@@ -9,8 +9,8 @@ import { BOOTCAMP_EVENTS } from '../content/events-bootcamp.js';
 const rules = loadRules();
 const sched = BOOTCAMP_EVENTS.filter((e) => e.week != null);
 
-test('bootcamp: 군종·신분마다 주차 일정이 훈련소 안에서 전부, 입소 → 수료 순으로 나온다', () => {
-  for (const [status, branch] of [['soldier', 'army'], ['soldier', 'marine'], ['soldier', 'navy'], ['soldier', 'airforce'], ['officer', 'army'], ['nco', 'army']]) {
+test('bootcamp: 군종마다 주차 일정이 훈련소 안에서 전부, 입소 → 수료 순으로 나온다', () => {
+  for (const [status, branch] of [['soldier', 'army'], ['soldier', 'marine'], ['soldier', 'navy'], ['soldier', 'airforce']]) {
     for (let i = 0; i < 5; i++) {
       const S = newGame(`bc-${status}-${branch}-${i}`, rules, { birth: '2006-05-01', status, branch });
       autoEnlist(S, rules); runGame(S, rules, { events: EVENTS });
@@ -18,7 +18,7 @@ test('bootcamp: 군종·신분마다 주차 일정이 훈련소 안에서 전부
       for (const e of sched) assert.equal(fired['n_' + e.id], 1, `${status}/${branch} ${e.id}`);
       const lines = S.log.map((l) => l.text);
       const iEnter = lines.findIndex((t) => t.startsWith('입소 첫 주'));
-      const iGrad = lines.findIndex((t) => /^(수료식|임관식|빨간 명찰 수여식) —/.test(t));
+      const iGrad = lines.findIndex((t) => /^(수료식|빨간 명찰 수여식) —/.test(t));
       const iServe = lines.findIndex((t) => t.includes('자대 배치'));
       assert.ok(iEnter >= 0 && iEnter < iGrad && iGrad < iServe, `${status}/${branch} 순서`);
       const trainLines = lines.slice(0, iServe);

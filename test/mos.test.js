@@ -42,21 +42,12 @@ test('mos: 같은 시드 drawAll 2회 → 같은 mos (결정론)', () => {
   assert.deepEqual(mk(), mk());
 });
 
-test('mos: 비병사(nco)는 기존 weights.mos 테이블에서 나옴 (하위 호환)', () => {
-  const d = drawAll(makeRng('n1'), rules.weights, { status: 'nco', branch: 'army' }, { soldierMos: rules.soldierMos });
-  assert.ok(d.mos in rules.weights.mos.army, d.mos);
-});
-
 test('mos: enlist 후 S.mosMech 부착 (newGame→enlist 플로우)', () => {
   const S = newGame('e1', rules, { birth: '2006-05-01', status: 'soldier', branch: 'airforce' });
   assert.equal(S.mosMech, null);
   enlist(S, rules, '2026-12-01');
   assert.deepEqual(S.mosMech, rules.soldierMos[S.branch][S.mos]);
   for (const f of ['leave', 'difficulty', 'injuryRisk']) assert.ok(f in S.mosMech, f);
-  // 비병사는 null (주특기 메카닉 없음)
-  const N = newGame('e2', rules, { birth: '2006-05-01', status: 'nco', branch: 'army' });
-  enlist(N, rules, '2026-12-01');
-  assert.equal(N.mosMech, null);
 });
 
 test('mos: 부상 판정 스모크 — injuryRisk 3으로 500개월 중 1회 이상 부상', () => {
