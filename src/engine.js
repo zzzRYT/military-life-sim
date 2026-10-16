@@ -323,6 +323,9 @@ export function where(S) {
   return p.startsWith('ship') ? 'sea' : ['gop', 'island', 'site'].includes(p) ? 'remote' : 'land';
 }
 
+/** 근무지(post id) 또는 지역 태그(rules/env.json places.tags)가 t인가 */
+export const placeIs = (S, t) => S.env?.post === t || !!S.env?.place?.tags.includes(t);
+
 /** 취미 선택. id가 rules.hobbies.hobbies에 있으면 S.hobby에 설정하고 true, 없으면 false */
 export function chooseHobby(S, rules, id) {
   const ok = rules.hobbies?.hobbies?.some((h) => h.id === id);
@@ -364,6 +367,7 @@ export function chooseFeed(S, events = []) {
     if (when.branch && !when.branch.includes(S.branch)) continue;
     if (when.season && when.season !== season) continue;
     if (when.status && !when.status.includes(S.status)) continue;
+    if (when.place && !when.place.some((t) => placeIs(S, t))) continue;
     if (e.needs && !has(S, e.needs)) continue;
     if (e.gap) {
       const last = S.flags['last_' + e.id];

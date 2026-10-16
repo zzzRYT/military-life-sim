@@ -271,6 +271,7 @@ const fmtYm = (ym) => `${ym.slice(0, 4)}년 ${+ym.slice(5)}월`;
 const PHASE = { pre: '입영 전', train: '훈련소', serve: '복무', end: '종료' };
 
 // ── 주특기·취미·관계 표시 헬퍼 ──
+const postLabel = () => `${rules.env.post[S.branch][S.env.post].label}${S.env.place ? ` · ${S.env.place.label}` : ''}`; // 근무지 · 지역
 function mosLabel() { // 병사: soldier-mos.json 한국어명, 간부: 기존 표시 유지
   if (S.status === 'soldier') return rules['soldier-mos']?.[S.branch]?.[S.mos]?.name ?? S.mos;
   return L(MOS_L, S.mos);
@@ -382,7 +383,7 @@ function render() {
   $('seedline').textContent = `seed ${seed}`;
   const tc = S.training;
   const mp = mosProfile();
-  $('idcard').innerHTML = [['군종', BRANCH_L[S.branch] || S.branch], ['특기', mosLabel()], ['근무지', rules.env.post[S.branch][S.env.post].label], ['신체등급', S.grade + '급'], ['훈련소', tc ? `${tc.name}${tc.place ? `(${tc.place})` : ''}` : '—'], ['입영', S.dates.enlist], ['전역', S.dates.discharge],
+  $('idcard').innerHTML = [['군종', BRANCH_L[S.branch] || S.branch], ['특기', mosLabel()], ['근무지', postLabel()], ['신체등급', S.grade + '급'], ['훈련소', tc ? `${tc.name}${tc.place ? `(${tc.place})` : ''}` : '—'], ['입영', S.dates.enlist], ['전역', S.dates.discharge],
     ['연인', S.bonds?.lover == null ? '연인 없음' : Math.round(S.bonds.lover)], ['가족', Math.round(S.bonds?.family ?? 0)], ['취미', S.hobby ? hobbyName(S.hobby) : '—']]
     .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')
     + (mp ? `<dt>주특기 정보</dt><dd class="sub">${mp.duties ?? ''}<br><span class="mono">휴가 ${mp.leave} · 난이도 ${mp.difficulty} · 부상위험 ${mp.injuryRisk}</span></dd>` : '');
@@ -523,7 +524,7 @@ function showReport() {
     <div class="kicker">나와 같은 신분·군종·경로·특기를 뽑을 확률</div>
     <div class="hero">${pct}%</div>
     <div class="grid">
-      <section><h2>신원</h2>${dl([['신분', STATUS_L[S.status] || S.status], ['군종', BRANCH_L[S.branch] || S.branch], ['경로', L(ROUTE_L, S.route)], ['특기', mosLabel()], ['근무지', rules.env.post[S.branch][S.env.post].label], ['훈련소', tc ? tc.name : '—'], ['입영 나이', `${R.age}살${R.deferred ? ` (${R.deferred}번 연기)` : ''}`]])}${S.heart?.text ? `<blockquote class="sub" style="text-align:left;margin:8px 0 0">입소 첫날 밤의 수첩 — “${esc(S.heart.text)}”</blockquote>` : ''}</section>
+      <section><h2>신원</h2>${dl([['신분', STATUS_L[S.status] || S.status], ['군종', BRANCH_L[S.branch] || S.branch], ['경로', L(ROUTE_L, S.route)], ['특기', mosLabel()], ['근무지', postLabel()], ['훈련소', tc ? tc.name : '—'], ['입영 나이', `${R.age}살${R.deferred ? ` (${R.deferred}번 연기)` : ''}`]])}${S.heart?.text ? `<blockquote class="sub" style="text-align:left;margin:8px 0 0">입소 첫날 밤의 수첩 — “${esc(S.heart.text)}”</blockquote>` : ''}</section>
       <section><h2>돈과 휴가</h2>${dl([['받은 월급', `<span class="mono">${won(R.paid)}</span>`], ['적금 만기', `<span class="mono">${won(R.payout)}</span>`], ['전역 때 잔고', `<span class="mono">${won(R.cash)}</span>`], ['남은 휴가', `${R.leaveLeft}일`], ['중대 결정', `${R.decisions}번`], ['징계', R.discipline.length ? R.discipline.map((d) => `${PUN[d.kind]}(${d.ym})`).join(', ') : '없음']])}</section>
     </div>
     <section><h2>월별 기분 <span class="sub">(체력·멘탈·관계 평균, 점선 = 50)</span></h2>${moodSvg(R.hist, R.lowest, R.highest)}

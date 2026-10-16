@@ -75,7 +75,7 @@ export function personLabel(env, ability, temper) {
 }
 
 /**
- * 복무 환경 추첨 (rules/env.json). 근무지 → 분위기 → 중대장 → 인물 → 개인 성향 → 훈련 일정.
+ * 복무 환경 추첨 (rules/env.json). 근무지 → 분위기 → 중대장 → 인물 → 개인 성향 → 훈련 일정 → 지역.
  * enlistYm·months는 훈련 일정 배치용. 훈련 테이블이 없는 근무지는 빈 일정.
  */
 export function drawEnv(rng, env, { branch, mos, enlistYm, months }) {
@@ -116,5 +116,9 @@ export function drawEnv(rng, env, { branch, mos, enlistYm, months }) {
   const raw = A.mood[mood] + A.captain[captain]
     + people.filter((p) => p.ahead !== null).reduce((a, p) => a + (A.temper[p.temper] ?? 0), 0);
   const abuse = Math.max(0, Math.min(100, raw));
-  return { post, mood, captain, people, self, drills, abuse };
+  // 지역: 근무지 안에서 맨 마지막에 추첨 (앞선 추첨 순서를 바꾸지 않게). 사건 when.place가 tags를 본다
+  const places = env.post[branch][post].places;
+  const pk = places ? wpick(rng, places) : null;
+  const place = pk ? { id: pk, label: places[pk].label, travel: places[pk].travel, tags: places[pk].tags } : null;
+  return { post, mood, captain, people, self, drills, abuse, place };
 }

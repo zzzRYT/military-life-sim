@@ -296,11 +296,13 @@ import { HOBBY_BOND_EVENTS } from './events-hobby-bonds.js';
 import { BOOTCAMP_EVENTS } from './events-bootcamp.js';
 import { CADRE_EVENTS } from './events-cadre.js';
 import { ECHOES } from './echoes.js';
-EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...CADRE_EVENTS);
+import { PLACE_EVENTS, PLACE_ECHOES } from './events-place.js';
+EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...CADRE_EVENTS, ...PLACE_EVENTS);
 
 // 병 전용 사건 (간부에겐 맞지 않는 상황·제도): 선임에게 혼남, 내일준비적금(병 전용), 병 휴대폰 규정, 병역법상 병 전역 사유, 나이 차 (docs/04 §11)
 const SOLDIER_ONLY = ['rough_day', 'savings', 'phone', 'unfit_review', 'family_hardship', 'old_brother', 'young_one', 'bond_easy_military'];
 for (const e of EVENTS) {
   if (SOLDIER_ONLY.includes(e.id)) e.when = { ...e.when, status: ['soldier'] };
-  if (ECHOES[e.id]) e.echo = ECHOES[e.id];
+  const echo = [...(ECHOES[e.id] ?? []), ...(PLACE_ECHOES[e.id] ?? [])]; // 흔적 문구가 먼저, 지역 문구는 그다음
+  if (echo.length) e.echo = echo;
 }
