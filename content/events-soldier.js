@@ -3,7 +3,7 @@
 //           공군·해병대 = 요약표 주특기명. rules/soldier-mos.json 키와 일치해야 함.
 import { rand } from '../src/engine.js';
 
-const SOLDIER = (branch, mos) => (S) => S.status === 'soldier' && S.branch === branch && S.mos === mos;
+const SOLDIER = (branch, mos) => (S) => S.branch === branch && S.mos === mos;
 
 export const SOLDIER_EVENTS = [
   // ── 육군 ──

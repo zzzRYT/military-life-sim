@@ -27,22 +27,23 @@ test('draw: 고정 시드 10만 회 군종 추첨 비율 (77.8/10.1/6.4/5.7 ±0.
 
 test('draw: drawAll이 유효한 키를 반환', () => {
   const rng = makeRng(42);
-  const d = drawAll(rng, rules.weights);
+  const d = drawAll(rng, rules.weights, {}, { soldierMos: rules.soldierMos });
   assert.ok(Number.isInteger(d.grade) && d.grade >= 1 && d.grade <= 7);
-  assert.ok(['soldier', 'nco', 'officer', 'warrant'].includes(d.status));
+  assert.equal(d.status, 'soldier');
   assert.ok(['army', 'navy', 'airforce', 'marine'].includes(d.branch));
   assert.ok(typeof d.route === 'string' && d.route.length > 0);
   assert.ok(typeof d.mos === 'string' && d.mos.length > 0);
 });
 
 test('draw: 같은 시드 → 같은 추첨 결과 (결정론)', () => {
-  const a = drawAll(makeRng('seed-1'), rules.weights);
-  const b = drawAll(makeRng('seed-1'), rules.weights);
+  const x = { soldierMos: rules.soldierMos };
+  const a = drawAll(makeRng('seed-1'), rules.weights, {}, x);
+  const b = drawAll(makeRng('seed-1'), rules.weights, {}, x);
   assert.deepEqual(a, b);
 });
 
 test('drawEnv: 같은 시드 → 같은 환경, 훈련은 복무 기간 안, 인물 라벨 조합', () => {
-  const opts = { branch: 'army', mos: 'infantry', enlistYm: '2026-12', months: 18 };
+  const opts = { branch: 'army', enlistYm: '2026-12', months: 18 };
   const a = drawEnv(makeRng('env'), rules.env, opts);
   assert.deepEqual(a, drawEnv(makeRng('env'), rules.env, opts));
   assert.ok(rules.env.post.army[a.post]);

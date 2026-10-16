@@ -8,13 +8,14 @@ import { ENDINGS } from './engine.js';
 const MILESTONE = /입소|수료|진급|징계|포상휴가|전역|군사재판|만기 수령/;
 const NOISE = /^월급 |^특별한 일 없이 한 달이/; // 월급·조용한 달(quiet_month)은 주마등에서 뺀다
 
-/** 로그 → 주마등 슬라이드. 이정표는 전부, 나머지 사건은 고르게 뽑아 max장까지 */
+/** 로그 → 주마등 슬라이드. 이정표·결정은 전부, 남는 자리는 되부르기 줄 먼저, 그다음 나머지 사건을 고르게 뽑아 max장까지 */
 export function pickReel(log, max = 14) {
   const lines = log.filter((l) => !NOISE.test(l.text));
   const keep = new Set(lines.filter((l) => l.decision || MILESTONE.test(l.text)));
-  const rest = lines.filter((l) => !keep.has(l));
-  const room = Math.max(0, max - keep.size);
-  for (let i = 0; i < room && i < rest.length; i++) keep.add(rest[Math.floor((i * rest.length) / Math.min(room, rest.length))]);
+  for (const pool of [lines.filter((l) => l.echo && !keep.has(l)), lines.filter((l) => !l.echo && !keep.has(l))]) {
+    const room = Math.max(0, max - keep.size);
+    for (let i = 0; i < room && i < pool.length; i++) keep.add(pool[Math.floor((i * pool.length) / Math.min(room, pool.length))]);
+  }
   return lines.filter((l) => keep.has(l)); // 원래 시간 순서 유지
 }
 
@@ -25,14 +26,12 @@ function share(table, key) {
   return sum ? (table[key]?.w ?? 0) / sum : 0;
 }
 
-/** 같은 신분·군종·경로·특기를 뽑을 확률 (%) — 스펙 §7-3 */
+/** 같은 군종·경로·특기를 뽑을 확률 (%) — 스펙 §7-3 (병사 중에서) */
 export function rarity(S, rules) {
   const w = rules.weights;
-  // 병사 주특기는 soldier-mos.json 키에서 균등 추첨 → 균등 점유율 (가정 — drawMos 참조)
-  const mosShare = S.status === 'soldier' && rules.soldierMos?.[S.branch]?.[S.mos]
-    ? 1 / Object.keys(rules.soldierMos[S.branch]).length
-    : share(w.mos[S.branch], S.mos);
-  return 100 * share(w.status, S.status) * share(w.branch[S.status], S.branch)
+  // 주특기는 soldier-mos.json 키에서 균등 추첨 → 균등 점유율 (가정 — drawMos 참조)
+  const mosShare = 1 / Object.keys(rules.soldierMos[S.branch]).length;
+  return 100 * share(w.branch[S.status], S.branch)
     * share(w.route[S.status], S.route) * mosShare;
 }
 

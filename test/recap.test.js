@@ -49,8 +49,7 @@ test('recap: pickReel — 이정표는 전부 남고, 순서 유지, 나머지�
   assert.deepEqual(r, log.filter((l) => r.includes(l)));
 });
 
-test('recap: rarity — 현역병·육군이면 단일 특기보다 흔하다', () => {
-  const p = rarity({ status: 'soldier', branch: 'army', route: 'conscript', mos: 'infantry' }, rules);
-  const q = rarity({ status: 'soldier', branch: 'army', route: 'conscript', mos: 'admin' }, rules);
-  assert.ok(p > q && p < 100);
+test('recap: rarity — 육군이 해병대보다 흔하고, 100% 미만', () => {
+  const at = (branch) => rarity({ status: 'soldier', branch, route: 'conscript', mos: Object.keys(rules.soldierMos[branch])[0] }, rules);
+  assert.ok(at('army') > at('marine') && at('army') < 100);
 });

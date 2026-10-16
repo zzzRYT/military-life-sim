@@ -109,12 +109,7 @@ export const HOBBY_BOND_EVENTS = [
     } },
 
   // ── 관계 사건 10 ──
-  { id: 'bond_ceremony_lover', kind: 'event', when: { phase: ['train'] }, w: 3, src: '가정',
-    c: (S) => hasLover(S),
-    run: (S) => { addLover(S, 10); return { t: '수료식에 여자친구가 왔다. 모루에서 꽃다발을 받았다.', fx: { mind: 10 } }; } },
-
-  { id: 'bond_ceremony_family', kind: 'event', when: { phase: ['train'] }, w: 3, src: '가정',
-    run: (S) => { addFamily(S, 10); return { t: '수료식 후 부모님과 부대 근처 식당에서 식사했다.', fx: { mind: 5 } }; } },
+  // 수료식(연인·가족)은 events-bootcamp.js 마지막 주 일정으로 옮김
 
   { id: 'bond_gomsin_crisis', kind: 'decision', when: { phase: ['serve'] }, w: 2, gap: 3, src: '가정',
     c: (S) => hasLover(S) && bonds(S).lover <= 30,
