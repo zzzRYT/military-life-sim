@@ -9,24 +9,6 @@
     "navy": 22
   },
   "center": {
-    "_fallback": {
-      "_note": "부사관·장교·준위는 임관 경로별 교육기관이 다양 — v1은 신분별 폴백. 전부 가정.",
-      "nco": {
-        "aid": "tr-nco",
-        "name": "부사관 교육기관",
-        "src": "가정"
-      },
-      "officer": {
-        "aid": "tr-officer",
-        "name": "장교 교육기관",
-        "src": "가정"
-      },
-      "warrant": {
-        "aid": "tr-warrant",
-        "name": "준사관 교육기관",
-        "src": "가정"
-      }
-    },
     "soldier": {
       "airforce": {
         "name": "공군교육사령부 기본군사훈련단",

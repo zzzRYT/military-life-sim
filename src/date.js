@@ -90,25 +90,3 @@ export function soldierPromotions(enlistIso, months) {
   }
   return out;
 }
-
-/** 간부 의무만료 = 만료일(임관일, 의무개월[신분][경로]) */
-export function obligationEnd(startIso, months) {
-  return expireDate(startIso, months);
-}
-
-/**
- * 장교 진급 후보
- *   = max(다음달1일(만료일(임관일, 근속)), 다음달1일(만료일(직전진급, 직전계급복무)))
- */
-export function officerPromotionCandidate(commissionIso, serviceMonths, prevPromoIso, rankServiceMonths) {
-  const a = nextMonthFirst(expireDate(commissionIso, serviceMonths));
-  const b = nextMonthFirst(expireDate(prevPromoIso, rankServiceMonths));
-  return a > b ? a : b;
-}
-
-/** 정년 전역일 = 정년 도달월의 다음 달 말일 (군인사법 36조 ①) */
-export function retirementMonthEnd(birthIso, ageYears) {
-  const { y, m } = parseISO(birthIso);
-  const r = addMonths(y, m, ageYears * 12 + 1);
-  return formatISO(r.y, r.m, daysInMonth(r.y, r.m));
-}

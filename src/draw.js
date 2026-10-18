@@ -1,4 +1,4 @@
-// draw.js — 신체등급·신분·군종·경로·특기 추첨 (§6)
+// draw.js — 신체등급·신분(병만)·군종·경로·특기 추첨 (§6)
 // 모든 가중치는 rules/weights.json에서 오며, 각 항목에 src(또는 "가정")가 있어야 한다.
 
 import { wpick } from './rng.js';
@@ -33,27 +33,19 @@ export function drawRoute(rng, weights, status) {
 }
 
 /**
- * 특기 (군종별 테이블).
- * 설계 §6의 adjust(자격증·전공 반영)는 M2에서 — M1에서는 그대로 추첨한다.
- * 병사 + soldierMos(주특기 프로필) 있으면 그 키 목록에서 균등 추첨 (가정 —
+ * 주특기: rules/soldier-mos.json 군종 키에서 균등 추첨 (가정 —
  * 병과별 전형 통계가 공개되지 않아 모든 주특기를 같은 확률로 본다).
- * 없으면 기존 weights.mos[branch] 폴백 (하위 호환).
  */
-export function drawMos(rng, weights, branch, status, soldierMos) {
-  if (status === 'soldier' && soldierMos?.[branch]) {
-    const keys = Object.keys(soldierMos[branch]);
-    if (!keys.length) throw new Error(`drawMos: no soldier mos keys for branch ${branch}`);
-    return wpick(rng, keys.map((k) => [k, 1]));
-  }
-  const t = weights.mos[branch];
-  if (!t) throw new Error(`drawMos: no table for branch ${branch}`);
-  return wpick(rng, t);
+export function drawMos(rng, branch, soldierMos) {
+  const keys = Object.keys(soldierMos?.[branch] ?? {});
+  if (!keys.length) throw new Error(`drawMos: no soldier mos keys for branch ${branch}`);
+  return wpick(rng, keys.map((k) => [k, 1]));
 }
 
 /**
  * 일괄 추첨. opts로 특정 항목을 고정할 수 있다
  * (테스트 결정론용). 고정된 항목은 RNG를 소모하지 않는다.
- * extra.soldierMos: 병사 주특기 균등 추첨용 (생략 시 기존 가중치 테이블).
+ * extra.soldierMos: 주특기 추첨용 (rules.soldierMos).
  * 추첨 순서: grade → status → branch → route → mos (§6)
  */
 export function drawAll(rng, weights, opts = {}, extra = {}) {
@@ -61,7 +53,7 @@ export function drawAll(rng, weights, opts = {}, extra = {}) {
   const status = drawStatus(rng, weights, opts.status);
   const branch = opts.branch ?? drawBranch(rng, weights, status);
   const route = opts.route ?? drawRoute(rng, weights, status);
-  const mos = opts.mos ?? drawMos(rng, weights, branch, status, extra.soldierMos);
+  const mos = opts.mos ?? drawMos(rng, branch, extra.soldierMos);
   return { grade, status, branch, route, mos };
 }
 
@@ -75,13 +67,11 @@ export function personLabel(env, ability, temper) {
 }
 
 /**
- * 복무 환경 추첨 (rules/env.json). 근무지 → 분위기 → 중대장 → 인물 → 개인 성향 → 훈련 일정.
+ * 복무 환경 추첨 (rules/env.json). 근무지 → 분위기 → 중대장 → 인물 → 개인 성향 → 훈련 일정 → 지역.
  * enlistYm·months는 훈련 일정 배치용. 훈련 테이블이 없는 근무지는 빈 일정.
  */
-export function drawEnv(rng, env, { branch, mos, enlistYm, months }) {
-  const bias = env.post.mosBias[mos] || {};
-  const postTable = Object.entries(env.post[branch]).map(([k, v]) => [k, v.w * (bias[k] ?? 1)]);
-  const post = wpick(rng, postTable);
+export function drawEnv(rng, env, { branch, enlistYm, months }) {
+  const post = wpick(rng, Object.entries(env.post[branch]).map(([k, v]) => [k, v.w]));
   const mood = wpick(rng, env.mood);
   const captain = wpick(rng, env.captain);
   const people = env.people.roles.map((r) => {
@@ -111,10 +101,14 @@ export function drawEnv(rng, env, { branch, mos, enlistYm, months }) {
     }
   }
   drills.sort((a, b) => (a.ym < b.ym ? -1 : 1));
-  // 부조리 지수: 분위기 + 중대장 + 병 인물(간부 제외) 성격. 추첨 없이 계산만
+  // 부조리 지수: 분위기 + 중대장 + 병 인물(행보관·소대장 제외) 성격. 추첨 없이 계산만
   const A = env.abuse;
   const raw = A.mood[mood] + A.captain[captain]
     + people.filter((p) => p.ahead !== null).reduce((a, p) => a + (A.temper[p.temper] ?? 0), 0);
   const abuse = Math.max(0, Math.min(100, raw));
-  return { post, mood, captain, people, self, drills, abuse };
+  // 지역: 근무지 안에서 맨 마지막에 추첨 (앞선 추첨 순서를 바꾸지 않게). 사건 when.place가 tags를 본다
+  const places = env.post[branch][post].places;
+  const pk = places ? wpick(rng, places) : null;
+  const place = pk ? { id: pk, label: places[pk].label, travel: places[pk].travel, tags: places[pk].tags } : null;
+  return { post, mood, captain, people, self, drills, abuse, place };
 }

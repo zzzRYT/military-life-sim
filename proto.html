@@ -50,6 +50,7 @@ dd { margin: 0; }
 .stat { display: grid; grid-template-columns: 36px 1fr 28px; gap: 6px; align-items: center; font-size: 13px; margin-top: 4px; }
 .stat .bar { margin: 0; height: 6px; }
 #log { list-style: none; padding: 0; margin: 12px 0 0; max-height: 360px; overflow-y: auto; font-size: 14px; }
+.echo { color: var(--muted); font-size: 12px; white-space: nowrap; }
 #log li { padding: 4px 0; border-bottom: 1px dashed var(--line); display: grid; grid-template-columns: 72px 1fr; gap: 8px; }
 #log .ym { color: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: 12px; }
 #map { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
@@ -71,7 +72,7 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
 .panel h3 { font: 600 22px "Hahmlet", serif; margin: 6px 0 12px; }
 .panel .row { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; align-items: center; }
 #heart { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); resize: vertical; margin-bottom: 12px; }
-.draw-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 20px 0; }
+.draw-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 20px 0; }
 @media (max-width: 560px) { .draw-cards { grid-template-columns: repeat(2, 1fr); } }
 .dcard { border: 1px solid var(--line); border-radius: 6px; padding: 12px 6px; background: var(--paper); opacity: 0; transform: translateY(8px); animation: flip .45s ease forwards; }
 .dcard .k { font-size: 12px; color: var(--muted); }
@@ -254,29 +255,23 @@ import { monthsBetweenYm } from './src/date.js';
 import { EVENTS } from './content/events.js';
 import { buildRecap } from './src/recap.js';
 
-const RULE_FILES = ['service', 'promotion', 'retirement', 'pay', 'leave', 'weights', 'assumptions', 'env', 'training', 'soldier-mos', 'hobbies'];
+const RULE_FILES = ['service', 'promotion', 'pay', 'leave', 'weights', 'assumptions', 'env', 'training', 'soldier-mos', 'hobbies'];
 const rules = Object.fromEntries(await Promise.all(RULE_FILES.map(async (n) => [n, await (await fetch(`./rules/${n}.json`)).json()])));
 rules.soldierMos = rules['soldier-mos']; // engine.js는 camelCase 키로 참조 (node loadRules와 동일)
 
 const won = (n) => n.toLocaleString('ko-KR') + '원';
 const $ = (id) => document.getElementById(id);
-const STATUS_L = { soldier: '현역병', nco: '부사관', officer: '장교', warrant: '준위' };
 const BRANCH_L = { army: '육군', navy: '해군', airforce: '공군', marine: '해병대' };
-const ROUTE_L = { conscript: '징집병', volunteer: '모집병', nco_long: '장기 부사관', nco_short: '단기 부사관', academy: '사관학교', bachelor: '학사장교', kma3: '3사관학교', ocs: '간부사관', rotc: '학군장교(ROTC)', warrant: '준사관' };
-const MOS_L = { admin: '행정', armor: '기갑', artillery: '포병', engineer: '공병', infantry: '보병', signal: '통신', transport: '수송', airDefense: '방공', aircraftMaint: '항공정비', logistics: '군수', militaryPolice: '군사경찰', supply: '보급', deck: '갑판', engineRoom: '기관', medical: '의무' };
+const ROUTE_L = { conscript: '징집병', volunteer: '모집병' };
 const L = (m, k) => m[k] || k;
 const season = (ym) => { const m = +ym.slice(5); return m === 12 || m <= 2 ? 'winter' : m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn'; };
 const fmtYm = (ym) => `${ym.slice(0, 4)}년 ${+ym.slice(5)}월`;
 const PHASE = { pre: '입영 전', train: '훈련소', serve: '복무', end: '종료' };
 
 // ── 주특기·취미·관계 표시 헬퍼 ──
-function mosLabel() { // 병사: soldier-mos.json 한국어명, 간부: 기존 표시 유지
-  if (S.status === 'soldier') return rules['soldier-mos']?.[S.branch]?.[S.mos]?.name ?? S.mos;
-  return L(MOS_L, S.mos);
-}
-function mosProfile() {
-  return S.status === 'soldier' ? rules['soldier-mos']?.[S.branch]?.[S.mos] ?? null : null;
-}
+const postLabel = () => `${rules.env.post[S.branch][S.env.post].label}${S.env.place ? ` · ${S.env.place.label}` : ''}`; // 근무지 · 지역
+const mosProfile = () => rules['soldier-mos']?.[S.branch]?.[S.mos] ?? null;
+const mosLabel = () => mosProfile()?.name ?? S.mos; // soldier-mos.json 한국어명
 function hobbyName(id) {
   return rules.hobbies?.hobbies?.find((h) => h.id === id)?.name ?? id ?? '—';
 }
@@ -299,7 +294,7 @@ const FRAME = 200; // ms
 // ── 시작 플로우 ──
 function newSeed() { return Math.random().toString(36).slice(2, 8); }
 
-const DRAW_KEYS = ['신체등급', '신분', '군종', '경로', '특기'];
+const DRAW_KEYS = ['신체등급', '군종', '경로', '특기'];
 const keysOf = (t) => Object.keys(t || {}).filter((k) => !k.startsWith('_'));
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let spinTimer = null;
@@ -314,11 +309,9 @@ function spinDraw(fixedSeed) {
   seed = fixedSeed || newSeed();
   S = newGame(seed, rules, { birth: '2006-05-01' });
   const w = rules.weights;
-  const final = [S.grade + '급', STATUS_L[S.status], BRANCH_L[S.branch], L(ROUTE_L, S.route), mosLabel()];
-  const pool = [keysOf(w.grade).map((g) => g + '급'), Object.values(STATUS_L), Object.values(BRANCH_L),
-    keysOf(w.route[S.status]).map((k) => L(ROUTE_L, k)), S.status === 'soldier' && rules.soldierMos?.[S.branch]
-      ? Object.values(rules.soldierMos[S.branch]).map((m) => m.name) // 병사: 주특기 90종 이름
-      : keysOf(w.mos[S.branch]).map((k) => L(MOS_L, k))];
+  const final = [S.grade + '급', BRANCH_L[S.branch], L(ROUTE_L, S.route), mosLabel()];
+  const pool = [keysOf(w.grade).map((g) => g + '급'), Object.values(BRANCH_L),
+    keysOf(w.route[S.status]).map((k) => L(ROUTE_L, k)), Object.values(rules.soldierMos[S.branch]).map((m) => m.name)]; // 주특기 이름
   $('startRow').hidden = true;
   $('drawCards').innerHTML = DRAW_KEYS.map((k) => `<div class="dcard spin"><div class="k">${k}</div><div class="v">?</div></div>`).join('');
   const cards = [...$('drawCards').children];
@@ -372,16 +365,16 @@ function render() {
   const now = new Date(new Date(S.ym + '-01').getTime() + Math.min(S.t, 1) * 30 * 864e5), dis = new Date(S.dates.discharge), enl = new Date(S.dates.enlist);
   const dleft = Math.max(0, Math.round((dis - now) / 864e5));
   const pct = Math.min(100, Math.max(0, ((now - enl) / (dis - enl)) * 100));
-  const rank = S.status === 'officer' && S.phase === 'train' ? '사관후보생' : rankName(rules, S.status, S.rank);
+  const rank = rankName(rules, S.status, S.rank);
   const END = { court: '복무 중단', medical: '의병 전역', unfit: '부적합 전역', family: '의가사 전역', shortened: '단축 전역' };
   $('dday').textContent = S.ending ? END[S.ending] : S.phase === 'end' ? '전역' : `D-${dleft}`;
-  $('subline').textContent = `${rank} · ${fmtYm(S.ym)} · ${S.status === 'officer' && S.phase === 'train' ? '임관 교육' : PHASE[S.phase]} · 1개월 ≈ ${Math.round(msPerMonth() / 1000 / (speed || 1))}초`;
+  $('subline').textContent = `${rank} · ${fmtYm(S.ym)} · ${PHASE[S.phase]} · 1개월 ≈ ${Math.round(msPerMonth() / 1000 / (speed || 1))}초`;
   $('prog').style.width = pct + '%';
   $('rankName').textContent = rank;
   $('seedline').textContent = `seed ${seed}`;
   const tc = S.training;
   const mp = mosProfile();
-  $('idcard').innerHTML = [['군종', BRANCH_L[S.branch] || S.branch], ['특기', mosLabel()], ['근무지', rules.env.post[S.branch][S.env.post].label], ['신체등급', S.grade + '급'], ['훈련소', tc ? `${tc.name}${tc.place ? `(${tc.place})` : ''}` : '—'], ['입영', S.dates.enlist], ['전역', S.dates.discharge],
+  $('idcard').innerHTML = [['군종', BRANCH_L[S.branch] || S.branch], ['특기', mosLabel()], ['근무지', postLabel()], ['신체등급', S.grade + '급'], ['훈련소', tc ? `${tc.name}${tc.place ? `(${tc.place})` : ''}` : '—'], ['입영', S.dates.enlist], ['전역', S.dates.discharge],
     ['연인', S.bonds?.lover == null ? '연인 없음' : Math.round(S.bonds.lover)], ['가족', Math.round(S.bonds?.family ?? 0)], ['취미', S.hobby ? hobbyName(S.hobby) : '—']]
     .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')
     + (mp ? `<dt>주특기 정보</dt><dd class="sub">${mp.duties ?? ''}<br><span class="mono">휴가 ${mp.leave} · 난이도 ${mp.difficulty} · 부상위험 ${mp.injuryRisk}</span></dd>` : '');
@@ -399,7 +392,7 @@ function render() {
   const roleName = { senior: '맞선임', roomSenior: '생활관 선임', peer: '동기', sfc: '행보관', lt: '소대장' };
   $('people').innerHTML = S.env.people.map((p) => `<dt>${roleName[p.role]}</dt><dd>${p.label} <span class="mono sub">${Math.round(p.rel)}</span></dd>`).join('');
   $('map').innerHTML = monthCells.map((c) => `<span title="${fmtYm(c.ym)}" style="background:color-mix(in srgb, var(--accent) ${c.mood}%, var(--line))">${c.icon}</span>`).join('');
-  $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text}</span></li>`).join('');
+  $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text}${l.echo ? ` <small class="echo">← ${fmtYm(l.echo)}</small>` : ''}</span></li>`).join(''); // echo: 되부르기 원래 흔적의 연월
   for (const b of document.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String(+b.dataset.speed === speed));
   $('auto').setAttribute('aria-pressed', String(auto));
   drawScene(); drawAvatar();
@@ -427,7 +420,7 @@ function drawAvatar() {
   g.fillStyle = '#3a4720'; g.fillRect(4, 1, 8, 3); // 모자
   g.fillStyle = '#e0b48a'; g.fillRect(5, 4, 6, 4); // 얼굴
   g.fillStyle = '#4b5d2a'; g.fillRect(3, 8, 10, 8); // 전투복
-  g.fillStyle = '#111'; if (S.status === 'soldier') for (let i = 0; i <= S.rank; i++) g.fillRect(6 + 0, 9 + i * 1.5, 4, 1); // 계급장 (이병 1줄 ~ 병장 4줄)
+  g.fillStyle = '#111'; for (let i = 0; i <= S.rank; i++) g.fillRect(6 + 0, 9 + i * 1.5, 4, 1); // 계급장 (이병 1줄 ~ 병장 4줄)
 }
 
 // 한 달이 끝난 뒤 복무 지도 칸 기록 (입영월~전역월만)
@@ -436,7 +429,7 @@ function recordCell(ym) {
   if (ym < enlistYm || ym > S.dates.discharge.slice(0, 7)) return;
   const lines = S.log.filter((l) => l.ym === ym).map((l) => l.text).join(' ');
   const icon = /진급/.test(lines) ? '진' : /휴가/.test(lines) ? '휴'
-    : monthsBetweenYm(enlistYm, ym) < getTrainingMonths(rules, S.branch, S.status, S.route) ? '훈' : /결정|훈련이/.test(lines) ? '!' : '';
+    : monthsBetweenYm(enlistYm, ym) < getTrainingMonths(rules, S.branch) ? '훈' : /결정|훈련이/.test(lines) ? '!' : '';
   monthCells.push({ ym, icon, mood: Math.round((S.st.fit + S.st.mind + S.st.rel) / 3) });
 }
 
@@ -519,10 +512,10 @@ function showReport() {
     <div class="kicker">전역 기록 · seed <span class="mono">${seed}</span></div>
     <h3>${R.ending}</h3>
     <p class="sub">${R.enlist} ~ ${R.end} · <strong class="mono">${R.days}일</strong> (${R.months}개월)${R.rank ? ` · 최종 계급 <strong>${R.rank}</strong>` : ''}</p>
-    <div class="kicker">나와 같은 신분·군종·경로·특기를 뽑을 확률</div>
+    <div class="kicker">나와 같은 군종·경로·특기를 뽑을 확률</div>
     <div class="hero">${pct}%</div>
     <div class="grid">
-      <section><h2>신원</h2>${dl([['신분', STATUS_L[S.status] || S.status], ['군종', BRANCH_L[S.branch] || S.branch], ['경로', L(ROUTE_L, S.route)], ['특기', mosLabel()], ['근무지', rules.env.post[S.branch][S.env.post].label], ['훈련소', tc ? tc.name : '—'], ['입영 나이', `${R.age}살${R.deferred ? ` (${R.deferred}번 연기)` : ''}`]])}${S.heart?.text ? `<blockquote class="sub" style="text-align:left;margin:8px 0 0">입소 첫날 밤의 수첩 — “${esc(S.heart.text)}”</blockquote>` : ''}</section>
+      <section><h2>신원</h2>${dl([['군종', BRANCH_L[S.branch] || S.branch], ['경로', L(ROUTE_L, S.route)], ['특기', mosLabel()], ['근무지', postLabel()], ['훈련소', tc ? tc.name : '—'], ['입영 나이', `${R.age}살${R.deferred ? ` (${R.deferred}번 연기)` : ''}`]])}${S.heart?.text ? `<blockquote class="sub" style="text-align:left;margin:8px 0 0">입소 첫날 밤의 수첩 — “${esc(S.heart.text)}”</blockquote>` : ''}</section>
       <section><h2>돈과 휴가</h2>${dl([['받은 월급', `<span class="mono">${won(R.paid)}</span>`], ['적금 만기', `<span class="mono">${won(R.payout)}</span>`], ['전역 때 잔고', `<span class="mono">${won(R.cash)}</span>`], ['남은 휴가', `${R.leaveLeft}일`], ['중대 결정', `${R.decisions}번`], ['징계', R.discipline.length ? R.discipline.map((d) => `${PUN[d.kind]}(${d.ym})`).join(', ') : '없음']])}</section>
     </div>
     <section><h2>월별 기분 <span class="sub">(체력·멘탈·관계 평균, 점선 = 50)</span></h2>${moodSvg(R.hist, R.lowest, R.highest)}

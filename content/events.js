@@ -71,7 +71,7 @@ function evalEvent(e) {
 
 export const EVENTS = [
   // ── 일상 (데모에서 이관) ──
-  { id: 'quiet_month', kind: 'event', when: { phase: ['train', 'serve'] }, w: 2,
+  { id: 'quiet_month', kind: 'event', when: { phase: ['serve'] }, w: 2, fallback: true, // 다른 사건이 없을 때만 · 훈련소엔 없다
     run: () => ({ t: '특별한 일 없이 한 달이 지나갔습니다.', fx: { mind: 1 } }) },
   { id: 'drill', kind: 'event', when: { phase: ['serve'] }, w: 5,
     c: (S) => drillNow(S),
@@ -293,4 +293,12 @@ export const EVENTS = [
 // 기존 이벤트 ID·순서를 건드리지 않기 위해 뒤에만 추가한다.
 import { SOLDIER_EVENTS } from './events-soldier.js';
 import { HOBBY_BOND_EVENTS } from './events-hobby-bonds.js';
-EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS);
+import { BOOTCAMP_EVENTS } from './events-bootcamp.js';
+import { ECHOES } from './echoes.js';
+import { PLACE_EVENTS, PLACE_ECHOES } from './events-place.js';
+EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS);
+
+for (const e of EVENTS) {
+  const echo = [...(ECHOES[e.id] ?? []), ...(PLACE_ECHOES[e.id] ?? [])]; // 흔적 문구가 먼저, 지역 문구는 그다음
+  if (echo.length) e.echo = echo;
+}

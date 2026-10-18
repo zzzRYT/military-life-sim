@@ -16,14 +16,15 @@ const play = (seed, focus) => {
 test('training: 초점 항목만 크게 오르고, 상한 100을 넘지 않는다', () => {
   const S = play('t1', 'marksman');
   assert.ok(S.train.marksman > 70 && S.train.marksman <= 100, `marksman ${S.train.marksman}`);
-  for (const k of Object.keys(TRAINING)) if (k !== 'marksman') assert.equal(S.train[k], 0);
+  // 초점 밖 항목은 훈련소 일정(제식·각개전투·행군 등)과 분대장 결정만큼만 오른다
+  for (const k of Object.keys(TRAINING)) if (k !== 'marksman') assert.ok(S.train[k] <= 25, `${k} ${S.train[k]}`);
 });
 
 test('training: 초점 없음 → 전 항목이 고르게, 초점보다 낮게', () => {
   const S = play('t1', null);
   const vs = Object.values(S.train);
-  assert.ok(vs.every((v) => v > 0 && v === vs[0]));
-  assert.ok(vs[0] < play('t1', 'marksman').train.marksman);
+  assert.ok(vs.every((v) => v > 0));
+  assert.ok(Math.max(...vs) < play('t1', 'marksman').train.marksman);
 });
 
 test('training: setFocus — 모르는 키는 거부', () => {

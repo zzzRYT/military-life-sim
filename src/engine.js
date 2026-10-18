@@ -63,6 +63,28 @@ function log(S, text) {
   S.log.push({ ym: S.ym, t: Math.round(S.t * 1000) / 1000, text });
 }
 
+// ── 흔적 (docs/04 §3-1): 사건·결정이 남긴 이름 붙은 사실. needs/echo가 읽는다 ──
+const list = (x) => (x == null ? [] : [].concat(x));
+/** 흔적 조건. 'id'는 있어야, '!id'는 없어야 통과 */
+export const has = (S, needs) => list(needs).every((m) => (m[0] === '!' ? !S.marks?.[m.slice(1)] : !!S.marks?.[m]));
+
+/**
+ * 되부르기 (§3-3): echo 중 조건 맞고 아직 안 쓴 첫 항목으로 결과 문구를 바꾸거나(t) 덧붙인다(add).
+ * t·add는 문자열 또는 (S, out) => 문자열 ('' 이면 건너뜀). 항목마다 한 판에 한 번. 로그 줄에 원래 흔적의 연월을 단다
+ */
+function withEcho(S, ref, out) {
+  if (!ref.echo || !out.t) return out;
+  for (const [i, e] of ref.echo.entries()) {
+    const key = `echo_${ref.id}_${i}`;
+    if (S.flags[key] || !has(S, e.needs)) continue;
+    const v = typeof (e.t ?? e.add) === 'function' ? (e.t ?? e.add)(S, out) : (e.t ?? e.add);
+    if (!v) continue;
+    S.flags[key] = true;
+    return { ...out, t: e.t ? v : `${out.t} ${v}`, echoYm: S.marks[list(e.needs).find((m) => m[0] !== '!')]?.ym };
+  }
+  return out;
+}
+
 function clampSt(v) {
   return Math.max(0, Math.min(100, v));
 }
@@ -75,11 +97,13 @@ function applyFx(S, fx) {
 }
 
 /**
- * 사건·결정 결과 적용. out = { t?, fx?, later?, rel?: {role: Δ}, punish?: {kind, n}, ban?: 개월, ending?: ENDINGS 키, shorten?: 총 복무개월 }
+ * 사건·결정 결과 적용. out = { t?, fx?, mark?: {set: {id: data}, del: [id]}, later?, rel?: {role: Δ}, punish?: {kind, n}, ban?: 개월, ending?: ENDINGS 키, shorten?: 총 복무개월 }
  * punish.kind: reprimand 견책 | confine 근신 | leaveCut 휴가단축(n일) | payCut 감봉(n개월) | drill 군기교육(n일) | demote 강등 [S3 제57조]
  */
 function applyOut(S, out) {
   applyFx(S, out.fx);
+  for (const [k, v] of Object.entries(out.mark?.set ?? {})) S.marks[k] = { ym: S.ym, ...v };
+  for (const k of out.mark?.del ?? []) delete S.marks[k];
   if (out.later) S.delayed.push({ dueYm: shiftMonth(S.ym, out.later.inMonths), id: out.later.id });
   for (const [role, d] of Object.entries(out.rel || {})) {
     const p = S.env.people.find((x) => x.role === role);
@@ -183,6 +207,7 @@ export function newGame(seed, rules, opts = {}) {
     leave: { left: 0, used: 0 }, // 입영 시점에 getLeaveDays로 설정
     score: 0,
     flags: {},
+    marks: {}, // 흔적 (docs/04) — {id: {ym, ...}}
     log: [],
     queue: [],
     recent: [],
@@ -206,9 +231,7 @@ export function newGame(seed, rules, opts = {}) {
  */
 export function enlist(S, rules, enlistIso, rngFn) {
   if (S.phase !== 'pre') throw new Error('enlist: phase must be pre');
-  // 장교 의무복무는 임관부터 — 양성교육 기간만큼 뒤로 민다 (병은 훈련소가 복무에 포함)
-  const months = getServiceMonths(rules, S.status, S.branch, S.route)
-    + (S.status === 'officer' ? getTrainingMonths(rules, S.branch, S.status, S.route) : 0);
+  const months = getServiceMonths(rules, S.status, S.branch); // 훈련소 기간 포함
   // 초임계급 예외 — 별도 RNG 스트림이라 기존 추첨·사건 결과는 그대로다
   const r = makeRng(S.seed ^ 0x5ca1ab1e)();
   let acc = 0;
@@ -217,7 +240,7 @@ export function enlist(S, rules, enlistIso, rngFn) {
   const credit = ex?.schoolMonths ? Math.min(months - 1, Math.floor(ex.schoolMonths * ex.ratio)) : 0;
   const base = credit ? `${shiftMonth(enlistIso.slice(0, 7), -credit)}${enlistIso.slice(7)}` : enlistIso;
   const discharge = expireDate(base, months);
-  const all = S.status === 'soldier' ? soldierPromotions(base, months) : [];
+  const all = soldierPromotions(base, months);
   const promotions = all.filter((p) => p.date > enlistIso);
   S.rank = ex?.rank ?? all.length - promotions.length;
   S.enlist = enlistIso;
@@ -226,10 +249,11 @@ export function enlist(S, rules, enlistIso, rngFn) {
   S.t = 0;
   // 환경은 drawAll 뒤에 같은 rng로 — 기존 추첨 결과는 바뀌지 않는다
   const rf = rngFn || (() => rand(S));
-  S.env = drawEnv(rf, rules.env, { branch: S.branch, mos: S.mos, enlistYm: S.ym, months });
+  S.env = drawEnv(rf, rules.env, { branch: S.branch, enlistYm: S.ym, months });
   S.training = getTrainingCenter(rules, S.status, S.branch);
+  S.trainWeeks = rules.service.trainingWeeks[S.branch].w; // 훈련소 주차 일정용
   // 주특기 메카닉 프로필 (leave·difficulty·injuryRisk 전부 가정 — rules/soldier-mos.json)
-  S.mosMech = S.status === 'soldier' ? rules.soldierMos?.[S.branch]?.[S.mos] ?? null : null;
+  S.mosMech = rules.soldierMos?.[S.branch]?.[S.mos] ?? null;
   // 주특기별 휴가 보정 (가정): leave 지수 3 → +20%, 2 → 그대로, 1 → −20%
   const mult = { 3: 1.2, 2: 1.0, 1: 0.8 }[S.mosMech?.leave] ?? 1;
   S.leave = { left: Math.max(0, Math.round(getLeaveDays(rules, S.status, S.branch) * mult)), used: 0 };
@@ -272,20 +296,13 @@ export function deferYear(S, rules, reason = 'chill') {
 
 /**
  * 입영 나이 자동 결정 → 입영 (첫 화면 추첨 직후). RNG는 S.rngState 스트림.
- * 장교: 경로별 임관 전 학교 연수(officerEdu.years)를 요약 로그로 건너뛰고 양성교육부터 시작.
- * 그 외: 입영 연령 분포(weights.enlistAge, S19)에서 추첨, 그 해까지는 랜덤 사유로 연기.
+ * 입영 연령 분포(weights.enlistAge, S19)에서 추첨, 그 해까지는 랜덤 사유로 연기.
  */
 export function autoEnlist(S, rules) {
-  const edu = S.status === 'officer' ? rules.service.officerEdu[S.route] : null;
-  if (edu) {
-    S.age += edu.years; S.year += edu.years; S.ym = `${S.year}-01`;
-    log(S, `${S.age}살 — ${edu.school} ${edu.years}년을 마치고 임관 교육으로`);
-  } else {
-    const k = wpick(() => rand(S), rules.weights.enlistAge);
-    const age = Math.min(MAX_ENLIST_AGE, Math.max(20, k === '25+' ? 25 : +k)); // 게임은 20살부터 — 19는 20으로
-    const reasons = Object.keys(DEFER_REASONS);
-    while (S.age < age) deferYear(S, rules, reasons[Math.floor(rand(S) * reasons.length)]);
-  }
+  const k = wpick(() => rand(S), rules.weights.enlistAge);
+  const age = Math.min(MAX_ENLIST_AGE, Math.max(20, k === '25+' ? 25 : +k)); // 게임은 20살부터 — 19는 20으로
+  const reasons = Object.keys(DEFER_REASONS);
+  while (S.age < age) deferYear(S, rules, reasons[Math.floor(rand(S) * reasons.length)]);
   enlist(S, rules, `${S.year}-${String(1 + Math.floor(rand(S) * 12)).padStart(2, '0')}-01`);
 }
 
@@ -295,6 +312,9 @@ export function where(S) {
   const p = S.env?.post ?? '';
   return p.startsWith('ship') ? 'sea' : ['gop', 'island', 'site'].includes(p) ? 'remote' : 'land';
 }
+
+/** 근무지(post id) 또는 지역 태그(rules/env.json places.tags)가 t인가 */
+export const placeIs = (S, t) => S.env?.post === t || !!S.env?.place?.tags.includes(t);
 
 /** 취미 선택. id가 rules.hobbies.hobbies에 있으면 S.hobby에 설정하고 true, 없으면 false */
 export function chooseHobby(S, rules, id) {
@@ -312,9 +332,10 @@ function enterPhase(S, rules) {
     S.phase = 'train';
     log(S, `입영 (${S.dates.enlist})`);
   }
-  if (S.phase === 'train' && monthsBetweenYm(enlistYm, S.ym) >= getTrainingMonths(rules, S.branch, S.status, S.route)) {
+  if (S.phase === 'train' && monthsBetweenYm(enlistYm, S.ym) >= getTrainingMonths(rules, S.branch)) {
     S.phase = 'serve';
-    log(S, S.status === 'officer' ? '임관 · 교육 수료 · 자대 배치' : '신병교육 수료 · 자대 배치');
+    S.flags.serveYm = S.ym;
+    log(S, '신병교육 수료 · 자대 배치');
   }
 }
 
@@ -329,11 +350,14 @@ export function chooseFeed(S, events = []) {
   const season = month === 12 || month <= 2 ? 'winter' : month <= 5 ? 'spring' : month <= 8 ? 'summer' : 'autumn';
   const pool = [];
   for (const e of events) {
+    if (e.week != null) continue; // 주차 일정은 planMonth가 배치
     const when = e.when || {};
     if (when.phase && !when.phase.includes(S.phase)) continue;
     if (when.months && !when.months.includes(month)) continue;
     if (when.branch && !when.branch.includes(S.branch)) continue;
     if (when.season && when.season !== season) continue;
+    if (when.place && !when.place.some((t) => placeIs(S, t))) continue;
+    if (e.needs && !has(S, e.needs)) continue;
     if (e.gap) {
       const last = S.flags['last_' + e.id];
       if (last && monthsBetweenYm(last, S.ym) < e.gap) continue;
@@ -352,6 +376,8 @@ export function chooseFeed(S, events = []) {
   const decisions = pool.filter(([e]) => e.kind === 'decision');
   if (decisions.length) picked.push(wpick(rf, decisions));
   let evts = pool.filter(([e]) => e.kind !== 'decision');
+  const real = evts.filter(([e]) => !e.fallback); // fallback(조용한 달 등)은 다른 사건이 하나도 없을 때만
+  if (real.length) evts = real;
   const n = 1 + Math.floor(rand(S) * 2); // 1~2개
   for (let i = 0; i < n && evts.length; i++) {
     const e = wpick(rf, evts);
@@ -394,6 +420,16 @@ export function planMonth(S, rules, events = []) {
   if (S.phase === 'train' || S.phase === 'serve') {
     S.queue.push({ at: 0.85, kind: 'pay' }); // 전역(0.9)보다 먼저 — 마지막 달 적금도 만기에 포함
   }
+  // 훈련소 주차 일정: week(N주차, 1~trainWeeks)를 훈련 페이즈 전체 길이에 비례해 펼쳐 고정 배치
+  if (S.phase === 'train') {
+    const m = monthsBetweenYm(S.dates.enlist.slice(0, 7), ym);
+    const M = getTrainingMonths(rules, S.branch);
+    for (const e of events) {
+      if (e.week == null) continue;
+      const t = (Math.min(typeof e.week === 'function' ? e.week(S) : e.week, S.trainWeeks + 0.45) - 0.5) / S.trainWeeks * M;
+      if (Math.floor(t) === m) S.queue.push({ at: t - m, kind: e.kind, id: e.id, ref: e });
+    }
+  }
   for (const item of chooseFeed(S, events)) S.queue.push(item);
   S.queue.sort((a, b) => a.at - b.at);
 }
@@ -434,8 +470,8 @@ export function fire(S, rules, item, opts = {}) {
       break;
     }
     case 'event': {
-      const out = item.ref.run(S) || {};
-      if (out.t) log(S, out.t);
+      const out = withEcho(S, item.ref, item.ref.run(S) || {});
+      if (out.t) { log(S, out.t); if (out.echoYm) S.log.at(-1).echo = out.echoYm; }
       applyOut(S, out);
       markFired(S, item.id);
       break;
@@ -446,8 +482,9 @@ export function fire(S, rules, item, opts = {}) {
       // opts.choice: 수동 결정(UI)에서 고른 k. 없으면 첫 선택지 (자동 결정)
       const choice = opts.choice ? d.choices.find((c) => c.k === opts.choice) : d.choices[0];
       if (!choice) throw new Error(`decision ${item.id}: no choice ${opts.choice ?? '(none)'}`);
-      const out = item.ref.apply(S, choice.k) || {};
+      const out = withEcho(S, item.ref, item.ref.apply(S, choice.k) || {});
       log(S, out.t || `결정: ${d.title} → ${choice.label}`);
+      if (out.echoYm) S.log.at(-1).echo = out.echoYm;
       S.log.at(-1).decision = true; // 전역 기록(주마등)이 결정 줄을 골라낸다
       (S.choices ??= []).push({ ym: S.ym, id: item.id, k: choice.k });
       applyOut(S, out);

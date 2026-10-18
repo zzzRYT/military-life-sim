@@ -6,7 +6,6 @@ import {
   getTrainingCenter,
   getAvgAge,
   rankName,
-  getMonthlyPay,
 } from '../src/rules.js';
 import {
   newGame,
@@ -130,47 +129,29 @@ test('start: runGame은 입영 전 상태에서 예외', () => {
   assert.throws(() => runGame(S, rules, { events: EVENTS, auto: true }), /enlist/);
 });
 
-test('rules: getTrainingCenter — 군종별 + 폴백', () => {
+test('rules: getTrainingCenter — 군종별', () => {
   assert.equal(getTrainingCenter(rules, 'soldier', 'navy').place, '진해');
   assert.equal(getTrainingCenter(rules, 'soldier', 'airforce').place, '진주');
   assert.equal(getTrainingCenter(rules, 'soldier', 'marine').place, '포항');
   assert.equal(getTrainingCenter(rules, 'soldier', 'marine').weeks, 6);
-  assert.ok(getTrainingCenter(rules, 'nco', 'army').name.includes('부사관'));
-  assert.ok(getTrainingCenter(rules, 'officer', 'navy').name.includes('장교'));
   assert.equal(getAvgAge(rules, 'army'), 22);
   assert.ok(Object.keys(DEFER_REASONS).length >= 4);
 });
 
-test('start: autoEnlist — 병은 입영 연령 분포에서 자동, 장교는 임관 전 학교 연수 + 경로별 양성교육', async () => {
+test('start: autoEnlist — 입영 연령 분포에서 자동', async () => {
   const { autoEnlist } = await import('../src/engine.js');
-  const { getTrainingMonths } = await import('../src/rules.js');
-  const { expireDate } = await import('../src/date.js');
   for (let i = 0; i < 30; i++) {
     const S = newGame('auto' + i, rules, { birth: '2006-05-01', status: 'soldier', branch: 'army' });
     autoEnlist(S, rules);
     assert.ok(S.age >= 20 && S.age <= MAX_ENLIST_AGE);
     assert.equal(S.dates.enlist.slice(0, 4), String(S.year));
   }
-  const O = newGame('auto-o', rules, { birth: '2006-05-01', status: 'officer', branch: 'army', route: 'bachelor' });
-  autoEnlist(O, rules);
-  assert.equal(O.age, 24);
-  const tm = getTrainingMonths(rules, O.branch, O.status, O.route);
-  assert.equal(tm, 8); // 양성교육 + 초군반 32주
-  assert.equal(O.dates.discharge, expireDate(O.dates.enlist, 36 + tm)); // 의무복무 3년은 임관부터
-  assert.ok(O.log.some((l) => l.text.includes('대학 4년')));
 });
 
-test('start: 초임계급 — 장교 소위·부사관 하사, 예외는 중사·병 환산 계급', () => {
+test('start: 초임계급 — 사관학교·후보생 중퇴자는 재학기간을 환산한 계급', () => {
   const R = (r) => ({ ...rules, promotion: { ...rules.promotion, startException: r } });
-  const off = newGame('rk', rules, { birth: '2006-05-01', status: 'officer', enlist: '2026-03-01' });
-  assert.equal(rankName(rules, off.status, off.rank), '소위');
-  const nco = newGame('rk', rules, { birth: '2006-05-01', status: 'nco', enlist: '2026-03-01' });
-  assert.equal(rankName(rules, nco.status, nco.rank), nco.log.some((l) => l.text.includes('중사부터 시작')) ? '중사' : '하사');
   // 예외를 확률 1로 강제
   const ex = (status, e) => newGame('rk', R({ [status]: [{ ...e, label: 'x', p: 1 }] }), { birth: '2006-05-01', status, branch: 'army', enlist: '2026-03-01' });
-  const n2 = ex('nco', { rank: 1 });
-  assert.equal(rankName(rules, 'nco', n2.rank), '중사');
-  assert.equal(getMonthlyPay(rules, 'nco', n2.rank), rules.pay.nco1.staffSergeant.m);
   const s = ex('soldier', { schoolMonths: 24, ratio: 2 / 3 }); // 사관학교 2학년 중퇴: 16개월 인정
   assert.equal(rankName(rules, 'soldier', s.rank), '병장');
   assert.equal(s.dates.promotions.length, 0);

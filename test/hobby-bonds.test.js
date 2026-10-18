@@ -42,9 +42,9 @@ test('bonds: newGame 후 bonds 존재 — family 60, lover는 70 또는 null', (
   assert.ok(S.bonds.lover === 70 || S.bonds.lover === null, `lover=${S.bonds.lover}`);
 });
 
-test('events: SOLDIER 40개·HOBBY_BOND 20개 — id 유일, 모든 c 실행 시 예외 없음', () => {
+test('events: SOLDIER 40개·HOBBY_BOND 18개 — id 유일, 모든 c 실행 시 예외 없음', () => {
   assert.equal(SOLDIER_EVENTS.length, 40);
-  assert.equal(HOBBY_BOND_EVENTS.length, 20);
+  assert.equal(HOBBY_BOND_EVENTS.length, 18); // 수료식 2개는 events-bootcamp.js로
   for (const pool of [SOLDIER_EVENTS, HOBBY_BOND_EVENTS]) {
     const ids = pool.map((e) => e.id);
     assert.equal(new Set(ids).size, ids.length, `중복 id: ${ids.filter((x, i) => ids.indexOf(x) !== i)}`);
