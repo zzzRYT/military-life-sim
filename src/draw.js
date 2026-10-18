@@ -86,7 +86,7 @@ export function drawEnv(rng, env, { branch, enlistYm, months }) {
       ahead: r.ahead ? r.ahead[0] + Math.floor(rng() * (r.ahead[1] - r.ahead[0] + 1)) : null,
     };
   });
-  const self = { smoker: rng() < env.self.smoker.p, exercise: wpick(rng, env.self.exercise) };
+  const self = { smoker: rng() < env.self.smoker.p, exercise: wpick(rng, env.self.exercise), temper: rng() < (env.self.temper?.p ?? 0) };
   // 훈련 일정: 복무 기간의 각 연도마다 p 확률로 months 중 하나 (입영~전역 범위 안만)
   const drills = [];
   const [y0, m0] = enlistYm.split('-').map(Number);
