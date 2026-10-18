@@ -299,7 +299,8 @@ import { PLACE_EVENTS, PLACE_ECHOES } from './events-place.js';
 import { SPECIALTY_EVENTS } from './events-specialty.js';
 import { DUTY_EVENTS } from './events-duty.js';
 import { LEAVE_EVENTS } from './events-leave.js';
-EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS, ...SPECIALTY_EVENTS, ...DUTY_EVENTS, ...LEAVE_EVENTS);
+import { HEALTH_EVENTS } from './events-health.js';
+EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS, ...SPECIALTY_EVENTS, ...DUTY_EVENTS, ...LEAVE_EVENTS, ...HEALTH_EVENTS);
 
 for (const e of EVENTS) {
   const echo = [...(ECHOES[e.id] ?? []), ...(PLACE_ECHOES[e.id] ?? [])]; // 흔적 문구가 먼저, 지역 문구는 그다음

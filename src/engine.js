@@ -22,6 +22,7 @@ import {
   getAvgAge,
 } from './rules.js';
 import { drawAll, drawEnv } from './draw.js';
+import { newBody, bodyMonth } from './body.js';
 
 export const ENGINE_VER = 1;
 
@@ -217,6 +218,7 @@ export function newGame(seed, rules, opts = {}) {
     focus: opts.focus ?? null, // 훈련 초점 (TRAINING 키) · null = 고르게
     train: Object.fromEntries(Object.keys(TRAINING).map((k) => [k, 0])), // 훈련 숙련도 0~100
     rewards: [], // [{ym, kind, days}] — 평가 포상 (전역 기록용)
+    body: newBody(hashSeed(seed)), // 체중·근육·습관 (src/body.js)
   };
   // 관계 스탯 초기화. lover 유무는 입대 전 연애 여부 추첨 (가정)
   S.bonds = { lover: rand(S) < 0.5 ? 70 : null, family: 60 };
@@ -548,6 +550,8 @@ function applyMonthly(S, rules) {
     const h = rules.hobbies?.hobbies?.find((x) => x.id === S.hobby);
     applyFx(S, h?.effects);
   }
+  // ── 몸: 습관·짬밥이 체중·근육에 쌓인다 (src/body.js) ──
+  applyFx(S, bodyMonth(S, rules));
   // ── 원동력 (휴가·좋은 일의 여운): boostUntil 전까지 매달 멘탈 +2 (가정) ──
   if (S.flags.boostUntil > S.ym) applyFx(S, { mind: 2 });
   // ── 연인 방치 감쇠 (가정). −1이면 18개월 안에 위기(≤30)가 안 와서 −3 ──

@@ -254,6 +254,7 @@ import { rankName, getTrainingMonths } from './src/rules.js';
 import { monthsBetweenYm } from './src/date.js';
 import { EVENTS } from './content/events.js';
 import { buildRecap } from './src/recap.js';
+import { HABITS, gain, shape } from './src/body.js';
 import { drawScene, drawAvatar } from './src/scene.js';
 
 const RULE_FILES = ['service', 'promotion', 'pay', 'leave', 'weights', 'assumptions', 'env', 'training', 'soldier-mos', 'hobbies'];
@@ -388,7 +389,9 @@ function render() {
   const nextPromo = S.dates.promotions.find((p) => p.rank > S.rank);
   $('sideinfo').innerHTML = [['휴가 잔여', S.leave.left + '일'], ['다음 진급', nextPromo ? nextPromo.date : '—'], ['잔고', won(S.money.cash)], ['적금', won(S.money.savings)]]
     .map(([k, v]) => `<dt>${k}</dt><dd class="mono">${v}</dd>`).join('')
-    + `<dt>징계</dt><dd>${(S.discipline || []).length}건</dd>`;
+    + `<dt>징계</dt><dd>${(S.discipline || []).length}건</dd>`
+    + (S.body ? `<dt>몸</dt><dd><span class="mono">${S.body.kg}kg (${gain(S.body) >= 0 ? '+' : ''}${gain(S.body)})</span> · ${shape(S.body)} · 근육 <span class="mono">${Math.round(S.body.muscle)}</span></dd><dt>습관</dt><dd>${HABITS[S.body.habit]?.label ?? '—'}</dd>` : '')
+    + (S.flags.injured?.until > S.ym ? `<dt>부상</dt><dd>${S.flags.injured.type}</dd>` : '');
   const roleName = { senior: '맞선임', roomSenior: '생활관 선임', peer: '동기', sfc: '행보관', lt: '소대장' };
   $('people').innerHTML = S.env.people.map((p) => `<dt>${roleName[p.role]}</dt><dd>${p.label} <span class="mono sub">${Math.round(p.rel)}</span></dd>`).join('');
   $('map').innerHTML = monthCells.map((c) => `<span title="${fmtYm(c.ym)}" style="background:color-mix(in srgb, var(--accent) ${c.mood}%, var(--line))">${c.icon}</span>`).join('');
@@ -496,7 +499,7 @@ function showReport() {
     <section><h2>월별 기분 <span class="sub">(체력·멘탈·관계 평균, 점선 = 50)</span></h2>${moodSvg(R.hist, R.lowest, R.highest)}
       <p class="sub" style="margin:4px 0 0">가장 힘들었던 달 <strong>${fmtYm(R.lowest.ym)}</strong> · 가장 좋았던 달 <strong>${fmtYm(R.highest.ym)}</strong></p></section>
     <div class="grid">
-      <section><h2>전역 때 상태</h2>${[['체력', 'fit'], ['멘탈', 'mind'], ['숙련', 'skill'], ['관계', 'rel']].map(([n, k]) => `<div class="stat"><span>${n}</span><div class="bar"><i style="width:${R.st[k]}%"></i></div><span class="mono">${Math.round(R.st[k])}</span></div>`).join('')}</section>
+      <section><h2>전역 때 상태</h2>${[['체력', 'fit'], ['멘탈', 'mind'], ['숙련', 'skill'], ['관계', 'rel']].map(([n, k]) => `<div class="stat"><span>${n}</span><div class="bar"><i style="width:${R.st[k]}%"></i></div><span class="mono">${Math.round(R.st[k])}</span></div>`).join('')}${R.body ? `<p class="sub" style="margin:6px 0 0">체중 <strong class="mono">${R.body.kg0}→${R.body.kg}kg</strong> · ${shape(R.body)} · 근육 <span class="mono">${Math.round(R.body.muscle)}</span> · 수도병원 ${R.hospital}번</p>` : ''}</section>
       <section><h2>함께한 사람들</h2>${dl(R.people.map((p) => [roleName[p.role] || p.role, `${p.label} <span class="mono sub">${p.rel}</span>`]))}</section>
     </div>
     <section><h2>훈련 <span class="sub">(마지막 초점: ${R.focus ? TRAINING[R.focus].label : '고르게'} · 포상 ${R.rewards.length}번, 휴가 +${R.rewards.reduce((a, r) => a + r.days, 0)}일)</span></h2>

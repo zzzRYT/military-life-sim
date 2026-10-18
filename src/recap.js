@@ -5,7 +5,7 @@ import { rankName } from './rules.js';
 import { ENDINGS } from './engine.js';
 
 /** 주마등에 반드시 남길 줄 — 입소·수료·진급·징계·포상·조기 종료·전역 (+ 결정 줄은 l.decision) */
-const MILESTONE = /입소|수료|진급|징계|포상휴가|전역|군사재판|만기 수령/;
+const MILESTONE = /입소|수료|진급|징계|포상휴가|전역|군사재판|만기 수령|수도병원/;
 const NOISE = /^월급 |^특별한 일 없이 한 달이/; // 월급·조용한 달(quiet_month)은 주마등에서 뺀다
 
 /** 로그 → 주마등 슬라이드. 이정표·결정은 전부, 남는 자리는 되부르기 줄 먼저, 그다음 나머지 사건을 고르게 뽑아 max장까지 */
@@ -70,5 +70,7 @@ export function buildRecap(S, rules) {
     focus: S.focus,
     train: { ...S.train },
     rewards: S.rewards || [],
+    body: S.body ? { ...S.body } : null,
+    hospital: S.hospital ?? 0,
   };
 }
