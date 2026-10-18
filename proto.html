@@ -156,7 +156,7 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
     <div id="train"></div>
   </section>
   <section aria-label="복무 기록">
-    <canvas id="scene" width="96" height="54"></canvas>
+    <canvas id="scene" width="128" height="72"></canvas>
     <ul id="log" aria-live="polite"></ul>
   </section>
   <section class="side" aria-label="복무 지도">
@@ -254,6 +254,7 @@ import { rankName, getTrainingMonths } from './src/rules.js';
 import { monthsBetweenYm } from './src/date.js';
 import { EVENTS } from './content/events.js';
 import { buildRecap } from './src/recap.js';
+import { drawScene, drawAvatar } from './src/scene.js';
 
 const RULE_FILES = ['service', 'promotion', 'pay', 'leave', 'weights', 'assumptions', 'env', 'training', 'soldier-mos', 'hobbies'];
 const rules = Object.fromEntries(await Promise.all(RULE_FILES.map(async (n) => [n, await (await fetch(`./rules/${n}.json`)).json()])));
@@ -264,7 +265,6 @@ const $ = (id) => document.getElementById(id);
 const BRANCH_L = { army: '육군', navy: '해군', airforce: '공군', marine: '해병대' };
 const ROUTE_L = { conscript: '징집병', volunteer: '모집병' };
 const L = (m, k) => m[k] || k;
-const season = (ym) => { const m = +ym.slice(5); return m === 12 || m <= 2 ? 'winter' : m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn'; };
 const fmtYm = (ym) => `${ym.slice(0, 4)}년 ${+ym.slice(5)}월`;
 const PHASE = { pre: '입영 전', train: '훈련소', serve: '복무', end: '종료' };
 
@@ -374,7 +374,7 @@ function render() {
   $('seedline').textContent = `seed ${seed}`;
   const tc = S.training;
   const mp = mosProfile();
-  $('idcard').innerHTML = [['군종', BRANCH_L[S.branch] || S.branch], ['특기', mosLabel()], ['근무지', postLabel()], ['신체등급', S.grade + '급'], ['훈련소', tc ? `${tc.name}${tc.place ? `(${tc.place})` : ''}` : '—'], ['입영', S.dates.enlist], ['전역', S.dates.discharge],
+  $('idcard').innerHTML = [['군종', BRANCH_L[S.branch] || S.branch], ['특기', mosLabel()], ['근무지', postLabel()], ['신체등급', S.grade + '급'], ['성격', S.env.self?.temper ? '기가 센 편' : '무난한 편'], ['훈련소', tc ? `${tc.name}${tc.place ? `(${tc.place})` : ''}` : '—'], ['입영', S.dates.enlist], ['전역', S.dates.discharge],
     ['연인', S.bonds?.lover == null ? '연인 없음' : Math.round(S.bonds.lover)], ['가족', Math.round(S.bonds?.family ?? 0)], ['취미', S.hobby ? hobbyName(S.hobby) : '—']]
     .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')
     + (mp ? `<dt>주특기 정보</dt><dd class="sub">${mp.duties ?? ''}<br><span class="mono">휴가 ${mp.leave} · 난이도 ${mp.difficulty} · 부상위험 ${mp.injuryRisk}</span></dd>` : '');
@@ -395,32 +395,7 @@ function render() {
   $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text}${l.echo ? ` <small class="echo">← ${fmtYm(l.echo)}</small>` : ''}</span></li>`).join(''); // echo: 되부르기 원래 흔적의 연월
   for (const b of document.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String(+b.dataset.speed === speed));
   $('auto').setAttribute('aria-pressed', String(auto));
-  drawScene(); drawAvatar();
-}
-
-// 픽셀 장면 (이미지 에셋 들어오기 전 임시 — 계절·페이즈로만 바뀜)
-function drawScene() {
-  const g = $('scene').getContext('2d'), s = season(S.ym);
-  const sky = { winter: '#9fb3c0', spring: '#a9cde0', summer: '#7fc0e8', autumn: '#c9b59a' }[s];
-  const ground = { winter: '#eef1f2', spring: '#8fae5a', summer: '#5e8f3b', autumn: '#a5874f' }[s];
-  g.fillStyle = sky; g.fillRect(0, 0, 96, 54);
-  g.fillStyle = ground; g.fillRect(0, 36, 96, 18);
-  if (S.phase === 'train') { // 연병장: 국기 게양대
-    g.fillStyle = '#555'; g.fillRect(12, 10, 1, 26);
-    g.fillStyle = '#fff'; g.fillRect(13, 10, 8, 5); g.fillStyle = '#c33'; g.fillRect(16, 11, 2, 2); g.fillStyle = '#336'; g.fillRect(16, 12, 2, 1);
-  } else { // 생활관
-    g.fillStyle = '#b8b3a0'; g.fillRect(50, 20, 40, 16); g.fillStyle = '#6b5a45'; g.fillRect(48, 17, 44, 3);
-    g.fillStyle = '#e8d97a'; for (let x = 54; x < 88; x += 8) g.fillRect(x, 24, 4, 4);
-  }
-  g.fillStyle = '#4b5d2a'; for (let i = 0; i < 4; i++) { g.fillRect(28 + i * 5, 30, 3, 6); g.fillStyle = '#3a4720'; g.fillRect(28 + i * 5, 28, 3, 2); g.fillStyle = '#4b5d2a'; }
-}
-function drawAvatar() {
-  const g = $('avatar').getContext('2d');
-  g.clearRect(0, 0, 16, 16);
-  g.fillStyle = '#3a4720'; g.fillRect(4, 1, 8, 3); // 모자
-  g.fillStyle = '#e0b48a'; g.fillRect(5, 4, 6, 4); // 얼굴
-  g.fillStyle = '#4b5d2a'; g.fillRect(3, 8, 10, 8); // 전투복
-  g.fillStyle = '#111'; for (let i = 0; i <= S.rank; i++) g.fillRect(6 + 0, 9 + i * 1.5, 4, 1); // 계급장 (이병 1줄 ~ 병장 4줄)
+  drawScene($('scene').getContext('2d'), S, pending?.id, Math.floor(performance.now() / FRAME)); drawAvatar($('avatar').getContext('2d'), S);
 }
 
 // 한 달이 끝난 뒤 복무 지도 칸 기록 (입영월~전역월만)
