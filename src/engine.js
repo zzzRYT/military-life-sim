@@ -97,11 +97,12 @@ function applyFx(S, fx) {
 }
 
 /**
- * 사건·결정 결과 적용. out = { t?, fx?, mark?: {set: {id: data}, del: [id]}, later?, rel?: {role: Δ}, punish?: {kind, n}, ban?: 개월, ending?: ENDINGS 키, shorten?: 총 복무개월 }
+ * 사건·결정 결과 적용. out = { t?, fx?, boost?: 개월(원동력: 그동안 매달 멘탈 +2), mark?: {set: {id: data}, del: [id]}, later?, rel?: {role: Δ}, punish?: {kind, n}, ban?: 개월, ending?: ENDINGS 키, shorten?: 총 복무개월 }
  * punish.kind: reprimand 견책 | confine 근신 | leaveCut 휴가단축(n일) | payCut 감봉(n개월) | drill 군기교육(n일) | demote 강등 [S3 제57조]
  */
 function applyOut(S, out) {
   applyFx(S, out.fx);
+  if (out.boost) S.flags.boostUntil = [S.flags.boostUntil ?? '', shiftMonth(S.ym, out.boost)].sort().at(-1);
   for (const [k, v] of Object.entries(out.mark?.set ?? {})) S.marks[k] = { ym: S.ym, ...v };
   for (const k of out.mark?.del ?? []) delete S.marks[k];
   if (out.later) S.delayed.push({ dueYm: shiftMonth(S.ym, out.later.inMonths), id: out.later.id });
@@ -547,6 +548,8 @@ function applyMonthly(S, rules) {
     const h = rules.hobbies?.hobbies?.find((x) => x.id === S.hobby);
     applyFx(S, h?.effects);
   }
+  // ── 원동력 (휴가·좋은 일의 여운): boostUntil 전까지 매달 멘탈 +2 (가정) ──
+  if (S.flags.boostUntil > S.ym) applyFx(S, { mind: 2 });
   // ── 연인 방치 감쇠 (가정). −1이면 18개월 안에 위기(≤30)가 안 와서 −3 ──
   if (S.bonds?.lover != null) S.bonds.lover = Math.max(0, S.bonds.lover - 3);
   S.monthsLeft = monthsBetweenYm(S.ym, S.dates.discharge.slice(0, 7)); // bond_d100 등 전역 임박 조건용
