@@ -1,27 +1,33 @@
 // content/events.js — 사건·결정 템플릿 (§3 형식)
 // 큰 사건은 p(이 달 후보가 될 절대 확률)로 게이트하고, 결과는 플레이어와의 거리로 갈린다.
 // 확률·결과 배분은 전부 '가정'. 법 조문 근거만 src로 단다.
-// 템플릿 변수: {senior} {roomSenior} {peer} {sfc} {lt} → "일은 잘하는데 무서운 맞선임" 식으로 치환.
+// 템플릿 변수: {senior} {roomSenior} {peer} {sfc} {lt} → "맞선임 박준호" 식으로, {senior.name} → "박준호" (같은 인물이 판 내내 같은 이름).
 
-import { rand, where } from '../src/engine.js';
+import { rand, where, capOf } from '../src/engine.js';
+import { fmt } from '../src/text.js';
+
+// 이 달 적금 한도 — 적금이 없던 시대면 0 (era.json savings). 시대 정보가 없으면 현행 55만 원
+const capNow = (S) => (S.era?.savings ? capOf(S.era.savings, S.ym) : 550000);
+
+// 조용한 달의 한 줄 — "특별한 일 없이 한 달이" 접두는 주마등(NOISE)에서 빠지는 표시라 유지
+const QUIET = ['PX 냉동 만두 신상이 들어왔다는 소문이 가장 큰 뉴스였습니다.', '달력에 X를 서른 개 그었습니다.', '족구에서 졌고, 진 팀이 저녁 청소를 했습니다.',
+  '전투화 밑창이 닳는 속도로 시간이 갔습니다.', '불침번 시간표가 바뀐 게 이번 달 사건의 전부였습니다.', '비가 와서 제초 작업이 두 번 미뤄졌고, 두 번 다 결국 했습니다.'];
+// 일상 부조리 — 누가 무엇을. 옛 시대 전용 문구는 events-era.js
+const ROUGH = ['관물대 각이 1cm 틀어졌다는 이유로 한참 혼났습니다.', '"이등병이 왜 웃냐"는 말을 들었습니다. 웃은 기억이 없습니다.',
+  '다 끝난 일을 "다시"라는 한마디로 처음부터 했습니다.', '점호 끝나고 따로 불려 가 "요즘 좀 편하지?"라는 질문을 받았습니다. 정답은 없었습니다.',
+  '선임 몫까지 빨래를 걷었는데, 하나가 모자라 그것까지 내 탓이 됐습니다.'];
 
 // 무거운 사건에는 도움 창구를 함께 보여준다 (01-product-spec §6-4)
-const HELP = '도움이 필요하면 · 국방헬프콜 1303 · 자살예방상담 109';
+export const HELP = '도움이 필요하면 · 국방헬프콜 1303 · 자살예방상담 109';
 
 const pct = (S) => S.env.abuse / 100;
+// 헌병 → 군사경찰 명칭 변경 (2020-06, 군사법원법 개정)
+const mp = (S) => (S.ym < '2020-06' ? '헌병' : '군사경찰');
 const roll = (S, p) => rand(S) < p;
 const pick = (S, arr) => arr[Math.floor(rand(S) * arr.length)];
 const drillNow = (S) => S.env.drills.some((d) => d.ym === S.ym);
 
-/** 템플릿 문자열의 {role}을 인물 라벨 + 역할명으로 */
-export function fmt(S, str) {
-  return str.replace(/\{(\w+)\}/g, (m, role) => {
-    const p = S.env.people.find((x) => x.role === role);
-    if (!p) return m;
-    const name = { senior: '맞선임', roomSenior: '생활관 선임', peer: '동기', sfc: '행보관', lt: '소대장' }[role];
-    return `${p.label} ${name}`;
-  });
-}
+export { ROLE_NAME, josa, fmt } from '../src/text.js';
 
 /**
  * 부대 사건 → 나와의 거리. 책임 위치는 상병 이상 + 같은 생활관일 때만.
@@ -72,7 +78,7 @@ function evalEvent(e) {
 export const EVENTS = [
   // ── 일상 (데모에서 이관) ──
   { id: 'quiet_month', kind: 'event', when: { phase: ['serve'] }, w: 2, fallback: true, // 다른 사건이 없을 때만 · 훈련소엔 없다
-    run: () => ({ t: '특별한 일 없이 한 달이 지나갔습니다.', fx: { mind: 1 } }) },
+    run: (S) => ({ t: `특별한 일 없이 한 달이 지나갔습니다. ${pick(S, QUIET)}`, fx: { mind: 1 } }) },
   { id: 'drill', kind: 'event', when: { phase: ['serve'] }, w: 5,
     c: (S) => drillNow(S),
     run: (S) => {
@@ -84,22 +90,27 @@ export const EVENTS = [
   ...EVALS.map(evalEvent),
 
   { id: 'savings', kind: 'decision', when: { phase: ['serve'] }, gap: 6, w: 1, max: 2, src: 'S34',
-    c: (S) => S.rank >= 1,
-    build: (S) => ({
-      title: S.flags.n_savings ? '적금, 이대로 괜찮을까?' : '적금, 얼마나 넣을까?',
-      body: S.flags.n_savings
-        ? `전역이 다가오니 다시 계산기를 두드려 봅니다. 지금은 매달 ${S.money.monthlyDeposit.toLocaleString('ko-KR')}원.`
-        : `월급이 오르자 선임이 적금 얘기를 꺼냅니다. 지금은 매달 ${S.money.monthlyDeposit.toLocaleString('ko-KR')}원을 넣고 있습니다.`,
-      src: '내일준비적금: 납입 원금의 100%를 정부가 매칭, 월 최대 55만 원 (S34)',
-      choices: [
-        { k: 'mid', label: '30만 원만 넣는다', hint: '적당히' },
-        { k: 'max', label: '55만 원 꽉 채운다', hint: '전역 때 목돈↑ · 쓸 돈이 빠듯하다' },
-        { k: 'none', label: '안 넣는다', hint: '지금이 편하다 · 매칭 0원' },
-      ],
-    }),
+    c: (S) => S.rank >= 1 && capNow(S) > 0, // 장병내일준비적금 출시 2018-08 — 그 전엔 이 고민 자체가 없었다
+    build: (S) => {
+      const cap = capNow(S), won = (n) => `${(n / 10000).toLocaleString('ko-KR')}만 원`;
+      const match = S.ym >= '2024' ? '납입 원금의 100%를 정부가 얹어 준다' : S.ym >= '2022' ? '정부가 원리금의 일부를 더 얹어 준다' : '정부 매칭은 아직 없고 은행 이자(연 5% 안팎)뿐이다';
+      return {
+        title: S.flags.n_savings ? '적금, 이대로 괜찮을까?' : '적금, 얼마나 넣을까?',
+        body: S.flags.n_savings
+          ? `전역이 다가오니 다시 계산기를 두드려 봅니다. 지금은 매달 ${won(S.money.monthlyDeposit)}. 동기들은 전역하고 차를 산다느니 유학을 간다느니 합니다.`
+          : `월급날, 선임이 통장을 보여 주며 말합니다. "이거 안 하면 바보다." 지금은 매달 ${won(S.money.monthlyDeposit)}을 넣고 있습니다.`,
+        src: `장병내일준비적금 (2018-08 출시): 지금 한도 월 ${won(cap)}, ${match} (era-official §2-2)`,
+        choices: [
+          { k: 'mid', label: `${won(Math.round(cap / 20000) * 10000)}만 넣는다`, hint: '적당히 · 회식 땐 눈치 안 본다' },
+          { k: 'max', label: `${won(cap)} 꽉 채운다`, hint: '전역 때 목돈↑ · PX도 휴가도 빠듯하다' },
+          { k: 'none', label: '안 넣는다', hint: '지금이 편하다 · 전역하면 빈손' },
+        ],
+      };
+    },
     apply: (S, k) => {
-      S.money.monthlyDeposit = { max: 550000, mid: 300000, none: 0 }[k];
-      return { t: `결정: 적금 월 ${S.money.monthlyDeposit.toLocaleString('ko-KR')}원`, fx: k === 'max' ? { mind: -2 } : k === 'none' ? { mind: 2 } : {} };
+      const cap = capNow(S);
+      S.money.monthlyDeposit = { max: cap, mid: Math.round(cap / 20000) * 10000, none: 0 }[k];
+      return { t: `결정: 적금 월 ${S.money.monthlyDeposit.toLocaleString('ko-KR')}원`, fx: k === 'max' ? { mind: -2 } : k === 'none' ? { mind: 2 } : { mind: -1 } };
     } },
 
   // ── 부조리 일상: 부조리 지수가 높을수록 자주, 멘탈을 깎는다 ──
@@ -108,7 +119,7 @@ export const EVENTS = [
     p: (S) => pct(S) * 0.9,
     run: (S) => {
       const who = pick(S, ['senior', 'roomSenior']);
-      const what = pick(S, ['사소한 일로 한참 혼났습니다.', '이유 없이 일을 몰아받았습니다.', '점호 뒤에 따로 불려 갔습니다.']);
+      const what = pick(S, ROUGH);
       let t = fmt(S, `{${who}}에게 ${what}`);
       if ((S.flags.ageGap ?? 0) >= 3) t += ' 나이가 많은 게 오히려 더 신경 쓰였습니다.';
       return { t, fx: { mind: -14 }, rel: { [who]: -8 } };
@@ -118,9 +129,9 @@ export const EVENTS = [
   { id: 'desertion_other', kind: 'event', when: { phase: ['serve'] }, gap: 6, w: 4, src: '군형법 제30조',
     p: (S) => 0.01 + pct(S) * 0.04,
     run: (S) => {
-      const base = { t: '같은 중대 병사가 부대를 이탈했습니다. 군사경찰이 수색 중입니다.', fx: { mind: -5 }, ban: 1 };
+      const base = { t: `아침 점호에 한 자리가 비었습니다. 옆 소대 일병이 밤사이 부대를 나갔다고 했습니다. 그날부터 ${mp(S)} 차가 위병소를 들락거렸고, 외출·외박이 전부 묶였습니다.`, fx: { mind: -5 }, ban: 1 };
       const dist = distance(S);
-      if (dist === 'witness') return { ...base, t: base.t + ' 마지막으로 본 사람으로 참고인 조사를 받았습니다.', fx: { mind: -8 } };
+      if (dist === 'witness') return { ...base, t: base.t + ' 전날 저녁 담배를 같이 피운 게 나라서, 참고인 조사실에 두 시간을 앉아 있었습니다.', fx: { mind: -8 } };
       if (dist === 'room') return { ...base, t: base.t + ' 같은 생활관이라 한동안 분위기가 무거웠습니다.', fx: { mind: -10 }, rel: { roomSenior: -5 } };
       if (dist === 'charge') { const c = chargeOutcome(S); return { ...base, ...c, t: base.t + ' ' + c.t }; }
       return base;
@@ -136,7 +147,7 @@ export const EVENTS = [
         if (roll(S, 1 / 3)) return { t: `${kind}로 크게 다쳤습니다. 전역 심사 끝에 의병 전역합니다.`, fx: { fit: -40 }, ending: 'medical' };
         return { t: `${kind}로 다쳐 국군병원에 입원했습니다.`, fx: { fit: -20, mind: -10 } };
       }
-      const base = { t: `부대에서 ${kind}가 발생했습니다. 부대 내 조사가 진행 중입니다.`, fx: { mind: -4 }, ban: 1 };
+      const base = { t: `부대에서 ${kind}가 났습니다. 다친 사람 이름은 끝까지 안 들렸고, 대신 안전교육이 일주일 내내 이어졌습니다.`, fx: { mind: -4 }, ban: 1 };
       const dist = distance(S);
       if (dist === 'charge') { const c = chargeOutcome(S); return { ...base, ...c, t: base.t + ' ' + c.t }; }
       if (dist !== 'none') return { ...base, fx: { mind: -8 } };
@@ -148,7 +159,7 @@ export const EVENTS = [
     p: (S) => pct(S) * 0.08,
     build: (S) => ({
       title: '봤는데, 어떻게 할까?',
-      body: fmt(S, '{roomSenior}이 후임에게 가혹행위를 하는 걸 봤습니다. 다들 못 본 척합니다.'),
+      body: fmt(S, '새벽 근무를 마치고 들어오다 봤습니다. 보일러실 앞에서 {roomSenior}이 이등병 하나를 벽에 세워 두고 있었습니다. 다음 날 아침, 생활관 누구도 그 얘기를 꺼내지 않았습니다.'),
       src: "구타·가혹행위는 군형법상 처벌 대상. '마음의 편지'는 무기명 고발제도지만 실효성 논란이 있다 (2019 연구)",
       help: HELP,
       choices: [
@@ -161,7 +172,7 @@ export const EVENTS = [
       if (k === 'quiet') {
         // 방조·묵인 적발 (가정): 30%
         if (roll(S, 0.3)) return { t: '나중에 사건이 드러났고, 묵인한 사실로 조사를 받았습니다.', fx: { mind: -10 }, punish: { kind: 'confine' } };
-        return { t: '아무 일 없던 것처럼 지나갔습니다.', fx: { mind: -6 } };
+        return { t: '아무 일 없던 것처럼 지나갔습니다. 그 이등병과는 한동안 눈을 못 마주쳤습니다.', fx: { mind: -6 } };
       }
       if (k === 'letter') {
         if (roll(S, 0.35)) return { t: '편지를 쓴 사람이 누구인지 생활관에 소문이 났습니다.', fx: { mind: -12 }, rel: { roomSenior: -30, senior: -10 } };
@@ -229,11 +240,11 @@ export const EVENTS = [
     }) },
 
   // ── 내 비행: 일과 중 휴대폰 ──
-  { id: 'phone', kind: 'decision', when: { phase: ['serve'] }, gap: 6, w: 2, c: (S) => where(S) !== 'sea', // 함정에선 휴대폰 반납 (가정) src: '병 휴대폰 사용 규정 위반 → 군기교육 사례 [S_new_6]',
+  { id: 'phone', kind: 'decision', when: { phase: ['serve'], phone: true }, gap: 6, w: 2, c: (S) => where(S) !== 'sea', // 함정에선 휴대폰 반납 (가정) src: '병 휴대폰 사용 규정 위반 → 군기교육 사례 [S_new_6]',
     p: 0.08,
-    build: () => ({
+    build: (S) => ({
       title: '일과 중에 휴대폰을 몰래 쓸까?',
-      body: '근무 중 시간이 비었습니다. 사물함에 휴대폰이 있습니다.',
+      body: `오후 작업이 일찍 끝났습니다. 휴대폰 받는 시간까지 네 시간. 사물함 안쪽 전투화 속에 휴대폰이 있고, ${S.bonds?.lover != null ? '여자친구 프사가 바뀌었다는 걸 어제 봤습니다.' : '응원하는 팀 경기가 지금 9회 말입니다.'}`,
       src: '휴대폰 사용 규정 위반은 징계 사유 (군기교육 사례 있음)',
       choices: [
         { k: 'no', label: '참는다', hint: '아무 일 없다' },
@@ -268,7 +279,7 @@ export const EVENTS = [
       if (k === 'endure') return { t: '이를 악물고 하루를 넘겼습니다.', fx: { mind: -3 } };
       // 탈영: 이틀 안 자진 복귀(무단이탈 처리) vs 체포 후 군사재판 (가정 50:50)
       if (roll(S, 0.5)) return { t: '이틀 만에 스스로 돌아왔습니다. 무단이탈로 처리되었습니다.', fx: { mind: -5 }, punish: { kind: 'drill', n: 15 }, ban: 1 };
-      return { t: '군사경찰에 체포되어 군무이탈 혐의로 기소되었습니다.', ending: 'court' };
+      return { t: `${mp(S)}에 체포되어 군무이탈 혐의로 기소되었습니다.`, ending: 'court' };
     } },
 
   // ── 나이 요소: 동기보다 많이 늦게 입영했을 때 (ageGap ≥ 3) ──
@@ -300,9 +311,12 @@ import { SPECIALTY_EVENTS } from './events-specialty.js';
 import { DUTY_EVENTS } from './events-duty.js';
 import { LEAVE_EVENTS } from './events-leave.js';
 import { HEALTH_EVENTS } from './events-health.js';
-EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS, ...SPECIALTY_EVENTS, ...DUTY_EVENTS, ...LEAVE_EVENTS, ...HEALTH_EVENTS);
+import { PEOPLE_EVENTS, PEOPLE_ECHOES } from './events-people.js';
+import { TAIL_EVENTS } from './events-tail.js';
+import { ERA_EVENTS } from './events-era.js';
+EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS, ...SPECIALTY_EVENTS, ...DUTY_EVENTS, ...LEAVE_EVENTS, ...HEALTH_EVENTS, ...PEOPLE_EVENTS, ...TAIL_EVENTS, ...ERA_EVENTS);
 
 for (const e of EVENTS) {
-  const echo = [...(ECHOES[e.id] ?? []), ...(PLACE_ECHOES[e.id] ?? [])]; // 흔적 문구가 먼저, 지역 문구는 그다음
+  const echo = [...(ECHOES[e.id] ?? []), ...(PLACE_ECHOES[e.id] ?? []), ...(PEOPLE_ECHOES[e.id] ?? [])]; // 흔적 문구가 먼저, 지역 문구는 그다음
   if (echo.length) e.echo = echo;
 }

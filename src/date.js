@@ -70,16 +70,14 @@ export function soldierDischarge(enlistIso, months) {
 }
 
 /**
- * 병 진급일 — [일병, 상병, 병장] (2-6-6)
+ * 병 진급일 — [일병, 상병, 병장] (기본 2-6-6, 시대별 steps는 era.json eras[].promo)
  *   일병 = 다음달1일(만료일(입영일, 2))
  *   상병 = 다음달1일(만료일(일병, 6))
  *   병장 = 다음달1일(만료일(상병, 6))
  * 전역일과 같거나 넘는 진급은 생성하지 않음 (§4 "전역일을 넘는 진급은 생성하지 않음"을
  * 엄격히 적용 — 같은 날 진급은 무의미하므로 제외)
  */
-export function soldierPromotions(enlistIso, months) {
-  const discharge = expireDate(enlistIso, months);
-  const steps = [2, 6, 6];
+export function soldierPromotions(enlistIso, months, discharge = expireDate(enlistIso, months), steps = [2, 6, 6]) {
   const out = [];
   let base = enlistIso;
   for (let i = 0; i < steps.length; i++) {

@@ -37,7 +37,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--card); bor
 .bar { height: 8px; background: var(--line); border-radius: 4px; margin-top: 8px; overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
 main { display: grid; grid-template-columns: 240px 1fr 260px; gap: 16px; padding: 16px; max-width: 1200px; margin: 0 auto; }
-@media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } main > section[aria-label="복무 기록"] { order: -1; } } /* 모바일: 장면·로그가 먼저 */
 section { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 12px; min-width: 0; }
 h2 { font-size: 13px; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
 .id-row { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
@@ -72,8 +72,7 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
 .panel h3 { font: 600 22px "Hahmlet", serif; margin: 6px 0 12px; }
 .panel .row { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; align-items: center; }
 #heart { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); resize: vertical; margin-bottom: 12px; }
-.draw-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 20px 0; }
-@media (max-width: 560px) { .draw-cards { grid-template-columns: repeat(2, 1fr); } }
+.draw-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin: 20px 0; }
 .dcard { border: 1px solid var(--line); border-radius: 6px; padding: 12px 6px; background: var(--paper); opacity: 0; transform: translateY(8px); animation: flip .45s ease forwards; }
 .dcard .k { font-size: 12px; color: var(--muted); }
 .dcard .v { font: 600 17px "Hahmlet", serif; margin-top: 4px; }
@@ -118,6 +117,11 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
 .report { max-width: 760px; text-align: left; position: relative; }
 .report .stamp { position: absolute; top: 20px; right: 24px; border: 3px solid var(--bad); color: var(--bad); border-radius: 50%; width: 84px; height: 84px; display: grid; place-items: center; font: 600 18px "Hahmlet", serif; transform: rotate(-14deg); opacity: .85; text-align: center; line-height: 1.1; }
 .report .hero { font: 600 40px "IBM Plex Mono", monospace; color: var(--accent); }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; vertical-align: 1px; }
+.chips i { font: 500 11px "IBM Plex Mono", monospace; font-style: normal; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); white-space: nowrap; }
+.chips .up { color: var(--good); }
+.chips .dn { color: var(--bad); }
+.report .quote { margin: 12px 0 6px; padding: 10px 14px; border-left: 3px solid var(--accent); font-size: 17px; line-height: 1.55; text-align: left; }
 .report .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
 @media (max-width: 560px) { .report .grid { grid-template-columns: minmax(0, 1fr); } .report .stamp { position: static; margin: 0 0 8px auto; } }
 .report section { padding: 10px 12px; }
@@ -139,6 +143,7 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
       <button data-speed="0" aria-label="멈춤">❚❚</button>
       <button data-speed="1">1×</button><button data-speed="2">2×</button>
       <button data-speed="4">4×</button><button data-speed="8">8×</button>
+      <button id="skip" title="다음 결정이나 수첩이 나올 때까지 빨리 감기">다음 결정까지 ▸▸</button>
       <button id="auto" aria-pressed="false">자동 결정</button>
       <select id="len" aria-label="한 판 길이"><option value="10">10분</option><option value="15">15분</option><option value="30">30분</option></select>
     </div>
@@ -206,9 +211,9 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
   <div class="panel">
     <div class="kicker">군 생활 시뮬레이터 · 프로토타입</div>
     <h1>스무 살, 당신의 군 생활이<br>시작됩니다</h1>
-    <p class="sub" id="startSub">신체등급부터 특기까지 — 모든 건 추첨으로 정해집니다.<br>한 번 뽑으면 되돌릴 수 없고, 입영 나이도 운명이 정합니다.</p>
+    <p class="sub" id="startSub">입대한 해부터 신체등급, 군종, 특기까지 — 모든 건 추첨으로 정해집니다.<br>1995년 GOP와 2024년 공군은 월급도, 휴대폰도, 선임도 다릅니다. 내가 입대한 해를 골라 그 시절을 다시 살아 볼 수도 있습니다.</p>
     <div class="draw-cards" id="drawCards"></div>
-    <div class="row" id="startRow"><button class="big primary" id="btnStart">입대하기</button></div>
+    <div class="row" id="startRow"><label class="sub">입대 연도 <select id="year"><option value="">운명에 맡긴다</option></select></label><button class="big primary" id="btnStart">입대하기</button></div>
   </div>
 </div>
 
@@ -220,6 +225,18 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
     <p class="sub">불 꺼진 생활관, 수첩에 몇 줄 적어 봅니다. 적은 이야기에 따라 앞으로 마주할 선택이 달라집니다.</p>
     <textarea id="heart" rows="4" maxlength="400" aria-label="마음속에 담아둔 이야기" placeholder="예) 여자친구가 기다려 줄지 걱정이다. 전역할 때까지 돈을 모으고 싶다."></textarea>
     <div class="row"><button class="big primary" id="btnHeart">수첩을 덮는다</button></div>
+  </div>
+</div>
+
+<!-- 수첩: 진급·전역 전날 시간이 멈추고 질문 하나 (전역 기록에서 돌려받는다) -->
+<div class="overlay" id="noteOverlay" hidden>
+  <div class="panel">
+    <div class="kicker" id="noteKicker"></div>
+    <h3 id="noteQ"></h3>
+    <p class="sub" id="noteSub"></p>
+    <textarea id="note" rows="3" maxlength="300" aria-label="수첩에 적을 말"></textarea>
+    <div class="row"><button class="big primary" id="btnNote">수첩을 덮는다</button></div>
+    <p class="sub" style="margin:6px 0 0;font-size:12px">비워 둬도 됩니다 · Ctrl/⌘+Enter</p>
   </div>
 </div>
 
@@ -248,17 +265,19 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
 
 <script type="module">
 import { applyHeart, asks, hobbyChoices, AXES } from './src/heart.js';
-import { newGame, autoEnlist, where, beginMonth, tick, endMonth, fire, chooseHobby, rand, TRAINING, setFocus } from './src/engine.js';
-import { rewardChance } from './content/events.js';
+import { newGame, autoEnlist, judge, fitMos, mosName, where, here, phoneOn, beginMonth, tick, endMonth, fire, chooseHobby, rand, TRAINING, setFocus } from './src/engine.js';
+import { rewardChance, ROLE_NAME } from './content/events.js';
 import { rankName, getTrainingMonths } from './src/rules.js';
 import { monthsBetweenYm } from './src/date.js';
 import { EVENTS } from './content/events.js';
-import { buildRecap } from './src/recap.js';
+import { buildRecap, cohortStats, headline } from './src/recap.js';
+import { drawYear } from './src/draw.js';
+import { makeRng } from './src/rng.js';
 import { HABITS, gain, shape } from './src/body.js';
 import { drawScene, drawAvatar } from './src/scene.js';
 
-const RULE_FILES = ['service', 'promotion', 'pay', 'leave', 'weights', 'assumptions', 'env', 'training', 'soldier-mos', 'hobbies'];
-const rules = Object.fromEntries(await Promise.all(RULE_FILES.map(async (n) => [n, await (await fetch(`./rules/${n}.json`)).json()])));
+const RULE_FILES = ['service', 'promotion', 'pay', 'leave', 'weights', 'assumptions', 'env', 'training', 'soldier-mos', 'hobbies', 'era'];
+const rules = Object.fromEntries(await Promise.all(RULE_FILES.map(async (n) => [n, await (await fetch(`./rules/${n}.json`, { cache: "no-cache" })).json()])));
 rules.soldierMos = rules['soldier-mos']; // engine.js는 camelCase 키로 참조 (node loadRules와 동일)
 
 const won = (n) => n.toLocaleString('ko-KR') + '원';
@@ -272,7 +291,7 @@ const PHASE = { pre: '입영 전', train: '훈련소', serve: '복무', end: '�
 // ── 주특기·취미·관계 표시 헬퍼 ──
 const postLabel = () => `${rules.env.post[S.branch][S.env.post].label}${S.env.place ? ` · ${S.env.place.label}` : ''}`; // 근무지 · 지역
 const mosProfile = () => rules['soldier-mos']?.[S.branch]?.[S.mos] ?? null;
-const mosLabel = () => mosProfile()?.name ?? S.mos; // soldier-mos.json 한국어명
+const mosLabel = () => mosName(rules, S.branch, S.mos, S.dates?.enlist ?? S.ym); // soldier-mos.json 한국어명 (옛 이름은 그 시절에)
 function hobbyName(id) {
   return rules.hobbies?.hobbies?.find((h) => h.id === id)?.name ?? id ?? '—';
 }
@@ -286,7 +305,7 @@ const q = new URLSearchParams(location.search);
 let seed = q.get('seed') || null;
 let S = null;
 const monthCells = []; // [{ym, mood, icon}]
-let speed = +(q.get('speed') ?? 1), auto = q.has('auto'), pending = null, timer = null, monthOpen = false, hobbyOpen = false, heartOpen = false;
+let speed = +(q.get('speed') ?? 1), auto = q.has('auto'), pending = null, timer = null, monthOpen = false, hobbyOpen = false, heartOpen = false, noteOpen = null;
 let sessionMin = +(q.get('min') ?? 15);
 let totalMonths = 18;
 const msPerMonth = () => (sessionMin * 60000) / totalMonths;
@@ -295,7 +314,7 @@ const FRAME = 200; // ms
 // ── 시작 플로우 ──
 function newSeed() { return Math.random().toString(36).slice(2, 8); }
 
-const DRAW_KEYS = ['신체등급', '군종', '경로', '특기'];
+const DRAW_KEYS = ['입대 연도', '신체등급', '군종', '경로', '특기'];
 const keysOf = (t) => Object.keys(t || {}).filter((k) => !k.startsWith('_'));
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let spinTimer = null;
@@ -307,12 +326,17 @@ function blankCards() {
 // 카드마다 후보를 빠르게 넘기다가 순서대로 실제 추첨값에 멈춘다
 function spinDraw(fixedSeed) {
   clearInterval(spinTimer);
+  dropSave();
   seed = fixedSeed || newSeed();
   S = newGame(seed, rules, { birth: '2006-05-01' });
-  const w = rules.weights;
-  const final = [S.grade + '급', BRANCH_L[S.branch], L(ROUTE_L, S.route), mosLabel()];
-  const pool = [keysOf(w.grade).map((g) => g + '급'), Object.values(BRANCH_L),
-    keysOf(w.route[S.status]).map((k) => L(ROUTE_L, k)), Object.values(rules.soldierMos[S.branch]).map((m) => m.name)]; // 주특기 이름
+  const year = pickYear();
+  const g0 = S.grade, verdict = judge(S, rules, year); // 7급은 여기서 재검
+  fitMos(S, rules, `${year}-01-01`); // 그 해에 없던 특기는 카드에 안 나온다
+  const w = rules.weights, [y0, y1] = rules.era.range ?? [2026, 2026];
+  const gradeTxt = g0 === 7 ? `7급→${S.grade}급` : S.grade + '급';
+  const final = verdict.serve ? [`${year}년`, gradeTxt, BRANCH_L[S.branch], L(ROUTE_L, S.route), mosLabel()] : [`${year}년`, gradeTxt, '—', '—', '—'];
+  const pool = [Array.from({ length: y1 - y0 + 1 }, (_, i) => `${y0 + i}년`), keysOf(w.grade).map((g) => g + '급'), Object.values(BRANCH_L),
+    keysOf(w.route[S.status]).map((k) => L(ROUTE_L, k)), Object.values(rules.soldierMos[S.branch]).filter((m) => !m.since || m.since <= `${year}-01`).map((m) => m.name)]; // 주특기 이름 (그 해에 있던 것만)
   $('startRow').hidden = true;
   $('drawCards').innerHTML = DRAW_KEYS.map((k) => `<div class="dcard spin"><div class="k">${k}</div><div class="v">?</div></div>`).join('');
   const cards = [...$('drawCards').children];
@@ -326,9 +350,19 @@ function spinDraw(fixedSeed) {
     });
     if (cards.every((c) => c.classList.contains('done'))) {
       clearInterval(spinTimer);
-      autoEnlist(S, rules); // 추첨 즉시 확정 — 다시 뽑기·연기 없음
-      $('startSub').innerHTML = S.log.slice(1).map((l) => l.text).join('<br>');
-      setTimeout(start, reduceMotion ? 300 : 2200);
+      if (!verdict.serve) { // 현역이 아닌 판정 — 이 인생은 군대에 가지 않는다 (같은 해 판정자 중 비율과 함께)
+        $('startSub').innerHTML = `<strong>${verdict.title}</strong> — 같은 해 판정받은 사람 중 ${verdict.pct}%<br>${verdict.text}`;
+        $('btnStart').textContent = '다시 태어나기';
+        $('startRow').hidden = false;
+        return;
+      }
+      autoEnlist(S, rules, year); // 추첨 즉시 확정 — 다시 뽑기·연기 없음
+      $('startSub').innerHTML = (S.era ? `<strong>${S.era.label}</strong> — ${S.era.blurb}<br>` : '') + S.log.slice(1).map((l) => l.text).join('<br>');
+      // 운명을 읽을 시간을 준다 — 입소는 내가 누른다
+      $('startRow').innerHTML = '<button class="big primary" id="btnEnter">입소한다 ▸</button>';
+      $('startRow').hidden = false;
+      $('btnEnter').onclick = start;
+      $('btnEnter').focus();
     }
   };
   spinTimer = setInterval(frame, 70);
@@ -339,6 +373,7 @@ const esc = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function start() {
   totalMonths = monthsBetweenYm(S.dates.enlist.slice(0, 7), S.dates.discharge.slice(0, 7)) + 1;
+  S.noteRank = S.rank; // 수첩: 이 계급보다 오르면 멈춘다
   $('startOverlay').hidden = true;
   render();
   if (auto) { applyHeart(S, ''); loop(); return; }
@@ -348,6 +383,35 @@ function start() {
   $('heart').focus();
 }
 
+// ── 수첩: 진급할 때마다·전역 전날 밤 시간이 멈춘다 ──
+const NOTES = {
+  1: { kicker: '일병 진급', q: '이등병 시절, 제일 힘들었던 한 가지는?', ph: '예) 아무것도 모르는데 다 알아야 했던 것' },
+  2: { kicker: '상병 진급', q: '지금 이 부대에서 제일 고마운 사람은? 왜?', ph: '예) 첫 주에 PX 데려가 준 맞선임' },
+  3: { kicker: '병장 진급', q: '후임들에게 절대 물려주고 싶지 않은 것 하나는?', ph: '예) "너 때는 안 그랬냐"는 말' },
+  end: { kicker: '전역 전날 밤', q: '입소 첫날 밤의 나에게 한마디', ph: '예) 생각보다 잘 버텼다' },
+};
+function openNote(key) {
+  endSkip();
+  const n = NOTES[key];
+  noteOpen = key;
+  $('noteKicker').textContent = `${n.kicker} · ${fmtYm(S.ym)}`;
+  $('noteQ').textContent = n.q;
+  $('noteSub').textContent = key === 'end' && S.heart?.text ? `입소 첫날 밤 수첩 — “${S.heart.text}”` : '시간이 잠시 멈췄습니다. 여기 적은 말은 전역하는 날 돌려받습니다.';
+  $('note').value = '';
+  $('note').placeholder = n.ph;
+  $('noteOverlay').hidden = false;
+  $('note').focus();
+}
+// 수첩·첫날 밤 입력칸: Ctrl/⌘+Enter로 덮는다 (Enter는 줄바꿈)
+for (const [ta, btn] of [['note', 'btnNote'], ['heart', 'btnHeart']]) $(ta).addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $(btn).click(); } });
+$('btnNote').onclick = () => {
+  const text = $('note').value.trim();
+  (S.notes ??= []).push({ ym: S.ym, key: noteOpen, q: NOTES[noteOpen].q, text });
+  $('noteOverlay').hidden = true;
+  noteOpen = null;
+  render(); loop();
+};
+
 $('btnHeart').onclick = () => {
   applyHeart(S, $('heart').value);
   if (S.heart.tags.length) S.log.push({ ym: S.ym, text: `마음속에 담아둔 것: ${S.heart.tags.map((k) => AXES[k].label).join(' · ')} — 이와 관련된 순간에만 선택을 묻는다` });
@@ -356,7 +420,33 @@ $('btnHeart').onclick = () => {
   render(); loop();
 };
 
+// 입대 연도: 고르면 그 해, 아니면 시드로 추첨 (?year= 로 고정 가능)
+function pickYear() {
+  const v = +($('year').value || q.get('year') || 0);
+  return v || drawYear(makeRng(`${seed}-year`), rules.era);
+}
+{ const [a, b] = rules.era.range ?? [2026, 2026];
+  for (let y = b; y >= a; y--) $('year').insertAdjacentHTML('beforeend', `<option value="${y}">${y}년</option>`);
+  if (q.get('year')) $('year').value = q.get('year'); } // "같은 해, 다른 인생"으로 왔으면 그 해가 골라져 있다
 $('btnStart').onclick = () => spinDraw();
+
+// ── 이어하기: 달이 끝날 때마다 브라우저에 저장 (새로고침·탭 종료 대비). 큐(사건 함수 참조)는 다음 달에 다시 짠다 ──
+const SAVE = 'mls-save-v1';
+function saveGame() { try { localStorage.setItem(SAVE, JSON.stringify({ seed, cells: monthCells, S: { ...S, queue: [] } })); } catch { /* 저장 못 해도 게임은 계속 */ } }
+function dropSave() { try { localStorage.removeItem(SAVE); } catch {} }
+function loadSave() { try { const v = JSON.parse(localStorage.getItem(SAVE)); return v?.S?.phase && v.S.phase !== 'end' && v.S.ver === S0_VER ? v : null; } catch { return null; } }
+const S0_VER = newGame('v', rules, { birth: '2006-05-01' }).ver;
+function resume(v) {
+  seed = v.seed; S = v.S; monthCells.push(...v.cells);
+  totalMonths = monthsBetweenYm(S.dates.enlist.slice(0, 7), S.dates.discharge.slice(0, 7)) + 1;
+  $('startOverlay').hidden = true;
+  render(); loop();
+}
+{ const v = !q.get('seed') && !auto && loadSave();
+  if (v) {
+    $('startRow').insertAdjacentHTML('afterbegin', `<button class="big" id="btnResume">이어하기 · ${rankName(rules, v.S.status, v.S.rank)} · ${fmtYm(v.S.ym)}</button>`);
+    $('btnResume').onclick = () => resume(v);
+  } }
 blankCards();
 $('hobbyList').onclick = (e) => { const b = e.target.closest('[data-h]'); if (b) pickHobby(b.dataset.h); };
 
@@ -375,7 +465,7 @@ function render() {
   $('seedline').textContent = `seed ${seed}`;
   const tc = S.training;
   const mp = mosProfile();
-  $('idcard').innerHTML = [['군종', BRANCH_L[S.branch] || S.branch], ['특기', mosLabel()], ['근무지', postLabel()], ['신체등급', S.grade + '급'], ['성격', S.env.self?.temper ? '기가 센 편' : '무난한 편'], ['훈련소', tc ? `${tc.name}${tc.place ? `(${tc.place})` : ''}` : '—'], ['입영', S.dates.enlist], ['전역', S.dates.discharge],
+  $('idcard').innerHTML = [...(S.era ? [['시대', S.era.label], ['휴대폰', phoneOn(S) ? '일과 후 사용' : '없음 (공중전화·편지)']] : []), ['군종', BRANCH_L[S.branch] || S.branch], ['특기', mosLabel()], ['근무지', postLabel()], ['신체등급', S.grade + '급'], ['성격', S.env.self?.temper ? '기가 센 편' : '무난한 편'], ['훈련소', tc ? `${tc.name}${tc.place ? `(${tc.place})` : ''}` : '—'], ['입영', S.dates.enlist], ['전역', S.dates.discharge],
     ['연인', S.bonds?.lover == null ? '연인 없음' : Math.round(S.bonds.lover)], ['가족', Math.round(S.bonds?.family ?? 0)], ['취미', S.hobby ? hobbyName(S.hobby) : '—']]
     .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')
     + (mp ? `<dt>주특기 정보</dt><dd class="sub">${mp.duties ?? ''}<br><span class="mono">휴가 ${mp.leave} · 난이도 ${mp.difficulty} · 부상위험 ${mp.injuryRisk}</span></dd>` : '');
@@ -392,13 +482,21 @@ function render() {
     + `<dt>징계</dt><dd>${(S.discipline || []).length}건</dd>`
     + (S.body ? `<dt>몸</dt><dd><span class="mono">${S.body.kg}kg (${gain(S.body) >= 0 ? '+' : ''}${gain(S.body)})</span> · ${shape(S.body)} · 근육 <span class="mono">${Math.round(S.body.muscle)}</span></dd><dt>습관</dt><dd>${HABITS[S.body.habit]?.label ?? '—'}</dd>` : '')
     + (S.flags.injured?.until > S.ym ? `<dt>부상</dt><dd>${S.flags.injured.type}</dd>` : '');
-  const roleName = { senior: '맞선임', roomSenior: '생활관 선임', peer: '동기', sfc: '행보관', lt: '소대장' };
-  $('people').innerHTML = S.env.people.map((p) => `<dt>${roleName[p.role]}</dt><dd>${p.label} <span class="mono sub">${Math.round(p.rel)}</span></dd>`).join('');
+  const roleName = ROLE_NAME;
+  $('people').innerHTML = S.phase === 'pre' || S.phase === 'train' ? '<dd class="sub" style="grid-column:1/-1">자대에 가면 만나게 됩니다.</dd>' : S.env.people.filter((p) => p.gone || here(S, p.role)).map((p) => `<dt>${roleName[p.role]}</dt><dd>${p.name ? `<strong>${p.name}</strong> · ` : ''}${p.gone ? '<span class="sub">전역</span>' : p.label} <span class="mono sub">${Math.round(p.rel)}</span></dd>`).join('');
   $('map').innerHTML = monthCells.map((c) => `<span title="${fmtYm(c.ym)}" style="background:color-mix(in srgb, var(--accent) ${c.mood}%, var(--line))">${c.icon}</span>`).join('');
-  $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text}${l.echo ? ` <small class="echo">← ${fmtYm(l.echo)}</small>` : ''}</span></li>`).join(''); // echo: 되부르기 원래 흔적의 연월
+  $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text.replace(/([+ ])(\d{4,})원/g, (m, a, n) => a + Number(n).toLocaleString('ko-KR') + '원')}${l.echo ? ` <small class="echo">← ${fmtYm(l.echo)}</small>` : ''}${chips(l)}</span></li>`).join(''); // echo: 되부르기 원래 흔적의 연월
   for (const b of document.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String(+b.dataset.speed === speed));
   $('auto').setAttribute('aria-pressed', String(auto));
   drawScene($('scene').getContext('2d'), S, pending?.id, Math.floor(performance.now() / FRAME)); drawAvatar($('avatar').getContext('2d'), S);
+}
+
+// 로그 줄의 변화 칩: 멘탈 −8 · 동기 박민준 +25 (엔진 tagFx가 단 값)
+const FX_L = { fit: '체력', mind: '멘탈', skill: '숙련', rel: '관계' };
+function chips(l) {
+  const a = [...Object.entries(l.fx ?? {}).filter(([k]) => FX_L[k]).map(([k, v]) => [FX_L[k], v]),
+    ...Object.entries(l.rel ?? {}).map(([r, v]) => { const p = S.env.people.find((x) => x.role === r); return [p?.name ? `${ROLE_NAME[r]} ${p.name}` : ROLE_NAME[r] ?? r, v]; })];
+  return a.length ? ` <span class="chips">${a.map(([k, v]) => `<i class="${v > 0 ? 'up' : 'dn'}">${k} ${v > 0 ? '+' : '−'}${Math.abs(Math.round(v))}</i>`).join('')}</span>` : '';
 }
 
 // 한 달이 끝난 뒤 복무 지도 칸 기록 (입영월~전역월만)
@@ -413,7 +511,8 @@ function recordCell(ym) {
 
 // 한 프레임 진행: 월 시작 → tick(dt) 조금씩 → t가 1을 넘으면 월 마감
 function step(dt) {
-  if (pending || recap || hobbyOpen || heartOpen) return;
+  if (pending || recap || hobbyOpen || heartOpen || noteOpen) return;
+  if (!auto && S.phase === 'serve' && !monthOpen && S.dates.discharge.slice(0, 7) === S.ym && !S.notes?.some((n) => n.key === 'end')) return openNote('end');
   if (S.phase !== 'end') {
     if (!monthOpen) { beginMonth(S, rules, EVENTS); monthOpen = true; }
     if (tick(S, rules, dt, { auto, ask: (it) => asks(S.heart, it.id) }) === 'paused') return openDecision();
@@ -424,18 +523,22 @@ function step(dt) {
     endMonth(S, rules);
     monthOpen = false;
     recordCell(ym);
+    if (!auto) saveGame();
   }
   render();
+  if (!auto && S.phase !== 'end' && S.rank > (S.noteRank ?? S.rank)) { S.noteRank = S.rank; return openNote(S.rank); }
   // 자대 배치(serve 진입) 직후 취미 선택 — 한 번만
   if (S.phase === 'serve' && S.hobby == null && !S.hobbyAsked) {
     S.hobbyAsked = true;
     if (auto) autoHobby(); else showHobbyPanel();
   }
-  if (S.phase === 'end') showRecap();
+  if (S.phase === 'end') { dropSave(); showRecap(); }
 }
 
 // ── 전역 기록: 주마등 → 보고서 ──
-let recap = null, reelTimer = null;
+let recap = null, reelTimer = null, shareText = '', skipFrom = 0;
+// 빨리 감기 중 결정·수첩이 열리면 원래 속도로 돌아온다
+const endSkip = () => { if (skipFrom) { speed = skipFrom; skipFrom = 0; } };
 const REEL_MS = 1600;
 function showRecap() {
   clearTimeout(timer);
@@ -445,12 +548,12 @@ function showRecap() {
 function playReel() {
   $('reportOverlay').hidden = true;
   $('reelOverlay').hidden = false;
-  $('reelDots').innerHTML = recap.reel.map(() => '<i></i>').join('');
+  $('reelDots').innerHTML = recap.movie.map(() => '<i></i>').join('');
   let i = 0;
   const show = () => {
     clearTimeout(reelTimer);
-    if (i >= recap.reel.length) return showReport();
-    const l = recap.reel[i];
+    if (i >= recap.movie.length) return showReport();
+    const l = recap.movie[i];
     $('reelYm').textContent = fmtYm(l.ym);
     const t = $('reelTxt');
     t.textContent = l.text;
@@ -481,47 +584,59 @@ function showReport() {
   $('reelOverlay').hidden = true;
   $('reportOverlay').hidden = false;
   const pct = R.rarity < 1 ? R.rarity.toFixed(2) : R.rarity.toFixed(1);
-  const PUN = { reprimand: '견책', confine: '근신', leaveCut: '휴가단축', payCut: '감봉', drill: '군기교육', demote: '강등' };
-  const roleName = { senior: '맞선임', roomSenior: '생활관 선임', peer: '동기', sfc: '행보관', lt: '소대장' };
+  const PUN = { reprimand: '견책', confine: '근신', leaveCut: '휴가단축', payCut: '감봉', drill: '군기교육', brig: '영창', demote: '강등' };
+  const roleName = ROLE_NAME;
   const dl = (rows) => `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
   const tc = S.training;
+  const CS = cohortStats(S, rules, EVENTS);
+  shareText = [`${R.era ? `[${R.era.label}] ` : ''}${R.enlist.slice(0, 4)}년 입대 · ${BRANCH_L[S.branch]} ${mosLabel()} · ${postLabel()}`,
+    `${R.ending} · ${R.days}일 · ${R.rank}`, `“${headline(S.log)}”`,
+    `같은 날 입대한 ${CS.n}명 중 포상휴가 상위 ${CS.rewardTop}%`, `${location.origin}${location.pathname}?seed=${seed}&year=${R.enlist.slice(0, 4)}`].join('\n');
   $('report').innerHTML = `
     <div class="stamp">${R.early ? '복무<br>종료' : '전역'}</div>
     <div class="kicker">전역 기록 · seed <span class="mono">${seed}</span></div>
-    <h3>${R.ending}</h3>
+    <h3>${R.ending}</h3>${R.era ? `<p class="sub"><strong>${R.era.label}</strong> — ${R.era.blurb}</p>` : ''}
     <p class="sub">${R.enlist} ~ ${R.end} · <strong class="mono">${R.days}일</strong> (${R.months}개월)${R.rank ? ` · 최종 계급 <strong>${R.rank}</strong>` : ''}</p>
-    <div class="kicker">나와 같은 군종·경로·특기를 뽑을 확률</div>
-    <div class="hero">${pct}%</div>
+    <blockquote class="quote">“${esc(headline(S.log))}”</blockquote>
+    <p class="sub">같은 날 입대한 ${CS.n}명 중 포상휴가 <strong>상위 ${CS.rewardTop}%</strong> · 버틴 기분 <strong>상위 ${CS.moodTop}%</strong> · 나와 같은 군종·경로·특기를 뽑을 확률 <strong class="mono">${pct}%</strong></p>
+    <section><h2>같은 날 입대한 사람들 <span class="sub">(${R.enlist} 입영)</span></h2>
+      <p class="sub" style="margin:0 0 6px">같은 날 들어간 ${CS.n}명 중 징계 받은 사람 <strong>${CS.punished}명</strong>, 만기 전에 나간 사람 <strong>${CS.early}명</strong>. 그중 세 명은 이렇게 살았습니다.</p>
+      <dl>${CS.people.slice(0, 3).map((c) => `<dt><strong>${c.name}</strong></dt><dd>${BRANCH_L[c.branch]} · ${mosName(rules, c.branch, c.mos, R.enlist)} · ${rules.env.post[c.branch][c.post].label}<br><span class="sub">${esc(c.line)}</span><br>${c.early ? `<strong>${c.ending}</strong>` : `${c.rank} ${c.ending}`}</dd>`).join('')}</dl></section>
+    ${(S.heart?.text || S.notes?.some((n) => n.text)) ? `<section><h2>수첩</h2><dl>${[...(S.heart?.text ? [{ ym: S.dates.enlist.slice(0, 7), q: '입소 첫날 밤', text: S.heart.text }] : []), ...(S.notes ?? []).filter((n) => n.text)].map((n) => `<dt>${fmtYm(n.ym)}</dt><dd><span class="sub">${esc(n.q)}</span><br>“${esc(n.text)}”</dd>`).join('')}</dl></section>` : ''}
     <div class="grid">
-      <section><h2>신원</h2>${dl([['군종', BRANCH_L[S.branch] || S.branch], ['경로', L(ROUTE_L, S.route)], ['특기', mosLabel()], ['근무지', postLabel()], ['훈련소', tc ? tc.name : '—'], ['입영 나이', `${R.age}살${R.deferred ? ` (${R.deferred}번 연기)` : ''}`]])}${S.heart?.text ? `<blockquote class="sub" style="text-align:left;margin:8px 0 0">입소 첫날 밤의 수첩 — “${esc(S.heart.text)}”</blockquote>` : ''}</section>
-      <section><h2>돈과 휴가</h2>${dl([['받은 월급', `<span class="mono">${won(R.paid)}</span>`], ['적금 만기', `<span class="mono">${won(R.payout)}</span>`], ['전역 때 잔고', `<span class="mono">${won(R.cash)}</span>`], ['남은 휴가', `${R.leaveLeft}일`], ['중대 결정', `${R.decisions}번`], ['징계', R.discipline.length ? R.discipline.map((d) => `${PUN[d.kind]}(${d.ym})`).join(', ') : '없음']])}</section>
+      <section><h2>신원</h2>${dl([['군종', BRANCH_L[S.branch] || S.branch], ['경로', L(ROUTE_L, S.route)], ['특기', mosLabel()], ['근무지', postLabel()], ['훈련소', tc ? tc.name : '—'], ['입영 나이', `${R.age}살${R.deferred ? ` (${R.deferred}번 연기)` : ''}`]])}</section>
+      <section><h2>돈과 휴가</h2>${dl([['받은 월급', `<span class="mono">${won(R.paid)}</span>${R.paidNow !== R.paid ? `<br><span class="sub">${R.nowYear}년이었다면 <span class="mono">${won(R.paidNow)}</span></span>` : ''}`], ['적금 만기', `<span class="mono">${won(R.payout)}</span>`], ['전역 때 잔고', `<span class="mono">${won(R.cash)}</span>`], ['남은 휴가', `${R.leaveLeft}일`], ['중대 결정', `${R.decisions}번`], ['징계', R.discipline.length ? R.discipline.map((d) => `${PUN[d.kind]}(${d.ym})`).join(', ') : '없음']])}</section>
     </div>
     <section><h2>월별 기분 <span class="sub">(체력·멘탈·관계 평균, 점선 = 50)</span></h2>${moodSvg(R.hist, R.lowest, R.highest)}
       <p class="sub" style="margin:4px 0 0">가장 힘들었던 달 <strong>${fmtYm(R.lowest.ym)}</strong> · 가장 좋았던 달 <strong>${fmtYm(R.highest.ym)}</strong></p></section>
     <div class="grid">
       <section><h2>전역 때 상태</h2>${[['체력', 'fit'], ['멘탈', 'mind'], ['숙련', 'skill'], ['관계', 'rel']].map(([n, k]) => `<div class="stat"><span>${n}</span><div class="bar"><i style="width:${R.st[k]}%"></i></div><span class="mono">${Math.round(R.st[k])}</span></div>`).join('')}${R.body ? `<p class="sub" style="margin:6px 0 0">체중 <strong class="mono">${R.body.kg0}→${R.body.kg}kg</strong> · ${shape(R.body)} · 근육 <span class="mono">${Math.round(R.body.muscle)}</span> · 수도병원 ${R.hospital}번</p>` : ''}</section>
-      <section><h2>함께한 사람들</h2>${dl(R.people.map((p) => [roleName[p.role] || p.role, `${p.label} <span class="mono sub">${p.rel}</span>`]))}</section>
+      <section><h2>함께한 사람들</h2>${dl(R.people.map((p) => [roleName[p.role] || p.role, `${p.name ? `<strong>${p.name}</strong> · ` : ''}${p.label} <span class="mono sub">${p.rel}</span>`]))}</section>
     </div>
     <section><h2>훈련 <span class="sub">(마지막 초점: ${R.focus ? TRAINING[R.focus].label : '고르게'} · 포상 ${R.rewards.length}번, 휴가 +${R.rewards.reduce((a, r) => a + r.days, 0)}일)</span></h2>
       ${Object.entries(TRAINING).map(([k, v]) => `<div class="stat" style="grid-template-columns:64px 1fr 80px"><span>${v.label}</span><div class="bar"><i style="width:${R.train[k]}%"></i></div><span class="mono">${Math.round(R.train[k])} · 포상 ${R.rewards.filter((r) => r.kind === k).length}</span></div>`).join('')}</section>
     <section><h2>연대기</h2><ol>${R.reel.map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text}</span></li>`).join('')}</ol></section>
     <div class="row">
       <button id="btnReplayReel">주마등 다시 보기</button>
+      <button id="btnShare">결과 복사</button>
       <button onclick="print()">인쇄 / PDF</button>
+      <button onclick="location.href=location.pathname + '?year=${R.enlist.slice(0, 4)}'">${R.enlist.slice(0, 4)}년, 다른 인생</button>
       <button class="big" onclick="location.href=location.pathname" style="background:var(--accent);color:var(--card);border-color:var(--accent)">새로운 인생</button>
     </div>`;
   $('btnReplayReel').onclick = playReel;
+  $('btnShare').onclick = async (e) => { try { await navigator.clipboard.writeText(shareText); e.target.textContent = '복사했습니다'; } catch { prompt('복사해서 공유하세요', shareText); } };
 }
 
 // ── 취미 선택 (자대 배치 직후, 한 번만) ──
 function showHobbyPanel() {
-  const all = rules.hobbies?.hobbies ?? [], w = where(S);
+  const all = rules.hobbies?.hobbies ?? [], w = [where(S), ...(phoneOn(S) ? [] : ['nophone'])];
   const list = hobbyChoices(S.heart, all, () => rand(S), 4, w); // 근무 환경에서 되는 것 중 성향에 맞는 취미만
   if (!list.length) return;
   hobbyOpen = true;
   $('hobbyList').innerHTML = list.map((h) =>
     `<button class="choice" data-h="${h.id}">${h.name}<small>${hobbyHint(h)}${h.place ? ` · ${h.place}` : ''}</small></button>`).join('')
-    + all.filter((h) => h.block?.[w]).map((h) => `<div class="src">${h.name} — ${h.block[w]}</div>`).join(''); // 못 하는 이유
+    + Object.entries(all.filter((h) => w.some((p) => h.block?.[p])).reduce((g, h) => { const why = h.block[w.find((p) => h.block?.[p])]; (g[why] ??= []).push(h); return g; }, {}))
+      .map(([why, hs]) => `<div class="src">${hs.map((h) => h.name).join(' · ')} — ${why}</div>`).join(''); // 못 하는 이유 (이유별로 묶어서)
   $('hobbyOverlay').hidden = false;
 }
 function pickHobby(id) {
@@ -533,13 +648,14 @@ function pickHobby(id) {
   render();
 }
 function autoHobby() { // ?auto 모드: 패널 없이 시드 결정론(rand)으로 자동 선택
-  const list = (rules.hobbies?.hobbies ?? []).filter((h) => !h.block?.[where(S)]);
+  const list = (rules.hobbies?.hobbies ?? []).filter((h) => !h.block?.[where(S)] && !(h.block?.nophone && !phoneOn(S)));
   if (!list.length) return;
   const h = list[Math.floor(rand(S) * list.length)];
   if (chooseHobby(S, rules, h.id)) S.log.push({ ym: S.ym, text: `취미 시작: ${h.name}` });
 }
 
 function openDecision() {
+  endSkip();
   const item = S.queue[0];
   const d = item.ref.build(S);
   pending = item;
@@ -569,10 +685,13 @@ function loop() {
 }
 document.querySelector('.ctl').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.id === 'auto') auto = !auto; else speed = +b.dataset.speed;
+  if (b.id === 'auto') auto = !auto;
+  else if (b.id === 'skip') { skipFrom = speed || 1; speed = 32; }
+  else { speed = +b.dataset.speed; skipFrom = 0; }
   render(); loop();
 };
 $('focus').onclick = (e) => { const b = e.target.closest('[data-focus]'); if (b) { setFocus(S, b.dataset.focus || null); render(); } };
+if (![...$('len').options].some((o) => o.value === String(sessionMin))) $('len').insertAdjacentHTML('afterbegin', `<option value="${sessionMin}">${sessionMin}분</option>`);
 $('len').value = String(sessionMin);
 $('len').onchange = (e) => { sessionMin = +e.target.value; render(); };
 
@@ -581,7 +700,8 @@ if (q.get('seed')) seed = q.get('seed');
 if (auto) {
   if (!seed) seed = newSeed();
   S = newGame(seed, rules, { birth: '2006-05-01' });
-  autoEnlist(S, rules);
+  while (!judge(S, rules, pickYear()).serve) { seed = newSeed(); S = newGame(seed, rules, { birth: '2006-05-01' }); } // ?auto: 현역 판정이 나올 때까지
+  autoEnlist(S, rules, pickYear());
   start();
 } else if (seed) {
   spinDraw(seed);

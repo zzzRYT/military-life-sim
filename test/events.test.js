@@ -35,7 +35,9 @@ test('events: 징계·엔딩 적용', () => {
 test('events: 템플릿 변수 치환', () => {
   const S = newGame('xyz', rules, opts);
   const p = S.env.people.find((x) => x.role === 'senior');
-  assert.equal(fmt(S, '{senior}'), `${p.label} 맞선임`);
+  assert.ok(p.name);
+  assert.equal(fmt(S, '{senior}'), `맞선임 ${p.name}`);
+  assert.equal(fmt(S, '{senior.name}'), p.name);
 });
 
 test('events: 복무기간 단축 — 6개월 전이면 전역일 변경, 지났으면 즉시 전역', () => {

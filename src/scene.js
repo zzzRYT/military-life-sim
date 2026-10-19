@@ -28,6 +28,8 @@ const BY_ID = [
   [/leave|_out$|tourist|home|cherry|date|birthday|holiday/, 'town'],
   [/enter|w2_basic|graduate|eval_foot|eval_fitness|leadership|ceremony|squad_leader|snow|mower|tennis|band/, 'parade'],
   [/hobby_|health_habit|letter|phone|lounge|rough|abuse|group_punish|barber|laundry|craving|night_watch|old_brother|young_one|age|cold|gomsin|gomusin|d100|easy|desert|family|grandpa/, 'room'],
+  [/t_hero|t_relief|t_cat/, 'town'],
+  [/^(p_|h_|t_|era_)/, 'room'], // 사람·시대 장면은 생활관이 기본 (위 규칙에 걸리면 그쪽)
 ];
 const NIGHT = /night|watch|sitroom|lounge|nll|guard|scramble/;
 // 연간 훈련(drill)은 훈련 종류로 — 경계 투입은 근무지 기본 장소 그대로

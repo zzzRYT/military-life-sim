@@ -20,8 +20,11 @@ import {
   rankName,
   getTrainingCenter,
   getAvgAge,
+  getService,
+  eraOf,
+  promoSteps,
 } from './rules.js';
-import { drawAll, drawEnv } from './draw.js';
+import { drawAll, drawEnv, namePeople, drawPerson } from './draw.js';
 import { newBody, bodyMonth } from './body.js';
 
 export const ENGINE_VER = 1;
@@ -99,7 +102,7 @@ function applyFx(S, fx) {
 
 /**
  * 사건·결정 결과 적용. out = { t?, fx?, boost?: 개월(원동력: 그동안 매달 멘탈 +2), mark?: {set: {id: data}, del: [id]}, later?, rel?: {role: Δ}, punish?: {kind, n}, ban?: 개월, ending?: ENDINGS 키, shorten?: 총 복무개월 }
- * punish.kind: reprimand 견책 | confine 근신 | leaveCut 휴가단축(n일) | payCut 감봉(n개월) | drill 군기교육(n일) | demote 강등 [S3 제57조]
+ * punish.kind: reprimand 견책 | confine 근신 | leaveCut 휴가단축(n일) | payCut 감봉(n개월) | drill 군기교육(n일) | brig 영창(n일, 2020-08 폐지 전) | demote 강등 [S3 제57조]
  */
 function applyOut(S, out) {
   applyFx(S, out.fx);
@@ -120,15 +123,15 @@ function applyOut(S, out) {
     (S.discipline ??= []).push({ ym: S.ym, ...pn });
     if (pn.kind === 'leaveCut') S.leave.left = Math.max(0, S.leave.left - pn.n);
     if (pn.kind === 'payCut') S.flags.payCutUntil = shiftMonth(S.ym, pn.n);
-    if (pn.kind === 'drill') {
-      // 군기교육 기간은 복무기간 불산입 → 전역일 연기 [S_new_1]
+    if (pn.kind === 'drill' || pn.kind === 'brig') {
+      // 군기교육·영창 기간은 복무기간 불산입 → 전역일 연기 [S_new_1] (영창은 2020-08-05 폐지)
       S.dates.discharge = addDays(S.dates.discharge, pn.n);
     }
     if (pn.kind === 'demote' && S.rank > 0) {
       S.rank -= 1;
       S.dates.promotions = S.dates.promotions.slice(0, -1); // 마지막 진급 하나를 잃는다 → 한 계급 낮게 전역
     }
-    const name = { reprimand: '견책', confine: '근신', leaveCut: `휴가단축 ${pn.n}일`, payCut: `감봉 ${pn.n}개월`, drill: `군기교육 ${pn.n}일`, demote: '강등' }[pn.kind];
+    const name = { reprimand: '견책', confine: '근신', leaveCut: `휴가단축 ${pn.n}일`, payCut: `감봉 ${pn.n}개월`, drill: `군기교육 ${pn.n}일`, brig: `영창 ${pn.n}일`, demote: '강등' }[pn.kind];
     log(S, `징계: ${name}`);
   }
   if (out.shorten) {
@@ -156,6 +159,14 @@ export const ENDINGS = {
   family: '의가사 전역 (전시근로역 편입)',
   shortened: '복무기간 단축 전역 (보충역 편입)',
 };
+
+/** 로그 줄에 이 결과가 바꾼 수치를 단다 (화면의 변화 칩용) — 0은 뺀다 */
+function tagFx(S, out) {
+  const nz = (o) => Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v));
+  const fx = nz(out.fx), rel = nz(out.rel);
+  if (Object.keys(fx).length) S.log.at(-1).fx = fx;
+  if (Object.keys(rel).length) S.log.at(-1).rel = rel;
+}
 
 function markFired(S, id) {
   S.flags['last_' + id] = S.ym;
@@ -232,9 +243,31 @@ export function newGame(seed, rules, opts = {}) {
  * rngFn: drawEnv용 RNG. 생략하면 S.rngState 스트림 사용. newGame 하위 호환 경로는
  * drawAll 직후의 로컬 rng를 넘겨 기존 시드와 완전히 같은 결과를 낸다.
  */
+/**
+ * 입영 시점에 아직 없던 특기면(soldier-mos.json since) 그때 있던 특기 중에서 다시 뽑는다. 별도 스트림 — 다른 추첨은 그대로.
+ * 입대 연도를 정한 직후(추첨 카드)와 enlist에서 부른다. 같은 해면 같은 결과
+ */
+export function fitMos(S, rules, iso) {
+  const t = rules.soldierMos?.[S.branch];
+  if (!t?.[S.mos]?.since || t[S.mos].since <= iso.slice(0, 7)) return;
+  const ok = Object.keys(t).filter((k) => !t[k].since || t[k].since <= iso.slice(0, 7));
+  S.mos = ok[Math.floor(makeRng(S.seed ^ 0x6d6f73)() * ok.length)];
+}
+
+/** 특기 이름 — 이름이 바뀐 특기는 그 전 시점엔 옛 이름 (헌병 → 군사경찰, 2020-06) */
+export function mosName(rules, branch, mos, ym) {
+  const m = rules.soldierMos?.[branch]?.[mos];
+  return !m ? mos : m.oldName && ym < m.renamed ? m.oldName : m.name;
+}
+
 export function enlist(S, rules, enlistIso, rngFn) {
   if (S.phase !== 'pre') throw new Error('enlist: phase must be pre');
-  const months = getServiceMonths(rules, S.status, S.branch); // 훈련소 기간 포함
+  fitMos(S, rules, enlistIso);
+  // 시대: 입영일이 복무기간·월급·휴대폰·부조리 기본값을 정한다 (rules/era.json)
+  const svc = getService(rules, S.branch, enlistIso);
+  const months = svc.months; // 훈련소 기간 포함
+  const era = eraOf(rules, Number(enlistIso.slice(0, 4)));
+  S.era = era && { ...era, phoneAt: rules.era.phone, phoneU: makeRng(S.seed ^ 0x70686f6e)(), savings: rules.era.savings };
   // 초임계급 예외 — 별도 RNG 스트림이라 기존 추첨·사건 결과는 그대로다
   const r = makeRng(S.seed ^ 0x5ca1ab1e)();
   let acc = 0;
@@ -242,8 +275,8 @@ export function enlist(S, rules, enlistIso, rngFn) {
   // 병: 사관학교·후보생 재학기간을 환산해 그만큼 먼저 입영한 것처럼 계급·전역일을 당긴다 (시행규칙 제34조, 병역법 시행령 제30조⑦)
   const credit = ex?.schoolMonths ? Math.min(months - 1, Math.floor(ex.schoolMonths * ex.ratio)) : 0;
   const base = credit ? `${shiftMonth(enlistIso.slice(0, 7), -credit)}${enlistIso.slice(7)}` : enlistIso;
-  const discharge = expireDate(base, months);
-  const all = soldierPromotions(base, months);
+  const discharge = addDays(expireDate(base, months), -svc.cutDays);
+  const all = soldierPromotions(base, months, discharge, promoSteps(rules, enlistIso));
   const promotions = all.filter((p) => p.date > enlistIso);
   S.rank = ex?.rank ?? all.length - promotions.length;
   S.enlist = enlistIso;
@@ -253,6 +286,14 @@ export function enlist(S, rules, enlistIso, rngFn) {
   // 환경은 drawAll 뒤에 같은 rng로 — 기존 추첨 결과는 바뀌지 않는다
   const rf = rngFn || (() => rand(S));
   S.env = drawEnv(rf, rules.env, { branch: S.branch, enlistYm: S.ym, months });
+  if (S.era?.abuse) S.env.abuse = Math.max(0, Math.min(100, S.env.abuse + S.era.abuse)); // 시대 기본 부조리 (가정 — era.json)
+  namePeople(makeRng(S.seed ^ 0x6e616d65), rules.env, S.env.people, Number(S.ym.slice(0, 4)));
+  // 맞후임: 몇 달 뒤 전입 (ahead 음수). 별도 스트림 — 기존 추첨을 바꾸지 않는다 (가정: 3~6개월 뒤)
+  const jr = makeRng(S.seed ^ 0x6a756e69);
+  S.env.people.push(drawPerson(jr, rules.env, 'junior', -(3 + Math.floor(jr() * 4)), Number(S.ym.slice(0, 4)), S.env.people));
+  // 생활관 선임 후임자: 지금 왕고가 전역하면 그다음 고참이 생활관을 쥔다 (가정: 맞선임보다 1개월 이상 고참)
+  const rs = S.env.people.find((p) => p.role === 'roomSenior'), sn = S.env.people.find((p) => p.role === 'senior');
+  if (rs && sn) rs.next = drawPerson(jr, rules.env, 'roomSenior', Math.max(sn.ahead + 1, rs.ahead - 3), Number(S.ym.slice(0, 4)), S.env.people);
   S.training = getTrainingCenter(rules, S.status, S.branch);
   S.trainWeeks = rules.service.trainingWeeks[S.branch].w; // 훈련소 주차 일정용
   // 주특기 메카닉 프로필 (leave·difficulty·injuryRisk 전부 가정 — rules/soldier-mos.json)
@@ -267,6 +308,33 @@ export function enlist(S, rules, enlistIso, rngFn) {
   S.flags.ageGap = S.age - getAvgAge(rules, S.branch);
   if (S.flags.ageGap >= 3) log(S, `동기들보다 ${S.flags.ageGap}살 위로 입영했다`);
   else if (S.flags.ageGap <= -2) log(S, `동기들보다 ${-S.flags.ageGap}살 어린 나이에 입영했다`);
+}
+
+/**
+ * 병역판정 (01-product-spec §3-1·3-2). 입영 전에 한 번. 7급(재신체검사)은 1~6급 비율로 다시 뽑는다.
+ * 4급 보충역은 2021-10-14부터 현역 자원 가능 [S22] — 그 전(가정: 2021년 입대까지)은 사회복무요원.
+ * 반환: { serve: true } | { serve: false, kind, title, text } — 현역이 아니면 이 판은 여기서 끝난다
+ */
+export function judge(S, rules, year) {
+  const w = rules.weights.grade;
+  if (S.grade === 7) {
+    const rest = Object.fromEntries(Object.entries(w).filter(([k]) => !k.startsWith('_') && k !== '7'));
+    S.grade = Number(wpick(() => rand(S), rest));
+    log(S, `7급 판정 — 재신체검사를 받았습니다. 결과는 ${S.grade}급`);
+  }
+  const pct = (g) => { const all = Object.entries(w).filter(([k]) => !k.startsWith('_')); return (100 * w[g].w / all.reduce((a, [, v]) => a + v.w, 0)).toFixed(1); };
+  if (S.grade <= 3) return { serve: true };
+  if (S.grade === 4 && year >= 2022) {
+    log(S, '4급 보충역 판정 — 사회복무요원 대신 현역을 자원했습니다');
+    return { serve: true };
+  }
+  const E = {
+    4: { kind: 'social', title: '4급 · 보충역', text: `사회복무요원으로 구청·복지관에서 출퇴근하며 복무합니다. 군복은 입지 않습니다.${year < 2022 ? ' 이 시절엔 4급이 현역을 자원할 길이 없었습니다.' : ''}` },
+    5: { kind: 'wartime', title: '5급 · 전시근로역', text: '평시에는 군대에 가지 않습니다. 전시에만 군사 지원 업무에 동원됩니다.' },
+    6: { kind: 'exempt', title: '6급 · 병역 면제', text: '병역 의무가 면제되었습니다. 입영 통지서는 오지 않습니다.' },
+  }[S.grade];
+  log(S, `${E.title} 판정`);
+  return { serve: false, ...E, pct: pct(String(S.grade)) };
 }
 
 /** 입영 연기 사유 (v1: 플레이버 + 소폭 스탯). 나이가 진짜 레버다. */
@@ -301,12 +369,54 @@ export function deferYear(S, rules, reason = 'chill') {
  * 입영 나이 자동 결정 → 입영 (첫 화면 추첨 직후). RNG는 S.rngState 스트림.
  * 입영 연령 분포(weights.enlistAge, S19)에서 추첨, 그 해까지는 랜덤 사유로 연기.
  */
-export function autoEnlist(S, rules) {
+export function autoEnlist(S, rules, year) {
   const k = wpick(() => rand(S), rules.weights.enlistAge);
   const age = Math.min(MAX_ENLIST_AGE, Math.max(20, k === '25+' ? 25 : +k)); // 게임은 20살부터 — 19는 20으로
+  if (year) {
+    // 입대 연도를 정해 두고 시작 (시대 선택): 그 해에 age살이 되도록 생년을 역산한다
+    const by = year - age + 1;
+    S.birth = `${by}${S.birth.slice(4)}`;
+    S.year = by + 19;
+    S.ym = `${S.year}-01`;
+    for (const l of S.log) l.ym = S.ym; // 판정 로그도 새 생년 기준으로
+  }
   const reasons = Object.keys(DEFER_REASONS);
   while (S.age < age) deferYear(S, rules, reasons[Math.floor(rand(S) * reasons.length)]);
   enlist(S, rules, `${S.year}-${String(1 + Math.floor(rand(S) * 12)).padStart(2, '0')}-01`);
+}
+
+/** 이 달에 병사가 휴대폰을 쓰는가 — era.json phone: [{from: 'YYYY-MM', on: bool}] 중 지금 이전 마지막 항목. 없으면 true(현행) */
+export function phoneOn(S) {
+  const t = S.era?.phoneAt ?? null;
+  if (!t) return true;
+  const row = t.filter((p) => p.from <= S.ym).at(-1);
+  return !!row?.on && (row.p == null || S.era.phoneU < row.p); // p: 시범 시기엔 일부 부대만 — 판마다 고정된 phoneU로
+}
+
+/** 적금 월 한도 (그 달 기준). 적금이 없던 시대면 0 */
+export function savingsCap(rules, ym) {
+  return rules.era?.savings ? capOf(rules.era.savings, ym) : rules.pay.savings.monthlyCap.m;
+}
+/** era.json savings 표 → 그 달 한도 (content는 S.era.savings로 부른다) */
+export const capOf = (sv, ym) => (ym < sv.open ? 0 : sv.cap.filter((c) => c.from <= ym).at(-1).m);
+
+/** 적금 매칭 비율 (전역일 기준). era.json savings.match: [{from, r}] — 없으면 rules.pay 현행값 */
+export function matchRate(rules, iso) {
+  const m = rules.era?.savings?.match;
+  return m ? (m.filter((x) => x.from <= iso).at(-1)?.r ?? 0) : rules.pay.savings.matchRate.r;
+}
+
+/** 인물이 지금 부대에 있는가 — 전입 전(ahead<0)·전역 후(gone)면 false */
+export function here(S, role) {
+  const p = S.env?.people.find((x) => x.role === role);
+  if (!p || p.gone) return false;
+  return p.ahead == null || p.ahead >= 0 || shiftMonth(S.dates.enlist.slice(0, 7), -p.ahead) <= S.ym;
+}
+
+/** 인물의 전역 달 (나보다 ahead개월 먼저 입대 → 내 전역 ahead개월 전). 간부(ahead null)는 null */
+export function leaveYm(S, role) {
+  const p = S.env?.people.find((x) => x.role === role);
+  return p?.ahead > 0 ? shiftMonth(S.dates.discharge.slice(0, 7), -p.ahead) : null;
 }
 
 /** 근무 환경 요약 — 사건 문구·취미 제약 분기용: 'train' | 'sea'(함정) | 'remote'(GOP·도서·산악 사이트) | 'land' */
@@ -360,13 +470,15 @@ export function chooseFeed(S, events = []) {
     if (when.branch && !when.branch.includes(S.branch)) continue;
     if (when.season && when.season !== season) continue;
     if (when.place && !when.place.some((t) => placeIs(S, t))) continue;
+    if (when.era && !when.era.includes(S.era?.id)) continue; // 시대 한정 장면 (era.json eras[].id)
+    if (when.phone != null && when.phone !== phoneOn(S)) continue; // true: 휴대폰 쓰는 시대만 · false: 없던 시대만
     if (e.needs && !has(S, e.needs)) continue;
     if (e.gap) {
       const last = S.flags['last_' + e.id];
       if (last && monthsBetweenYm(last, S.ym) < e.gap) continue;
     }
-    // 결정은 한 판에 max번(기본 1) — 같은 질문 반복 방지
-    if (e.kind === 'decision' && (S.flags['n_' + e.id] ?? 0) >= (e.max ?? 1)) continue;
+    // 결정은 한 판에 max번(기본 1) — 같은 질문 반복 방지. 사건은 max가 있을 때만
+    if ((e.kind === 'decision' || e.max) && (S.flags['n_' + e.id] ?? 0) >= (e.max ?? 1)) continue;
     if (e.c && !e.c(S)) continue;
     // p: 이 달에 후보가 될 절대 확률 (큰 사건용). w는 후보끼리의 상대 가중치
     if (e.p !== undefined && rand(S) >= (typeof e.p === 'function' ? e.p(S) : e.p)) continue;
@@ -375,7 +487,9 @@ export function chooseFeed(S, events = []) {
     pool.push([e, w]);
   }
   const rf = () => rand(S);
-  const picked = [];
+  // must: 조건이 맞으면 무조건 이 달에 나온다 (인물 전역·전입 같은 고정 일정형 사건). 다른 사건 수에 안 센다
+  const picked = pool.filter(([e]) => e.must).map(([e]) => e);
+  for (let i = pool.length - 1; i >= 0; i--) if (pool[i][0].must) pool.splice(i, 1);
   const decisions = pool.filter(([e]) => e.kind === 'decision');
   if (decisions.length) picked.push(wpick(rf, decisions));
   let evts = pool.filter(([e]) => e.kind !== 'decision');
@@ -441,11 +555,11 @@ export function planMonth(S, rules, events = []) {
 export function fire(S, rules, item, opts = {}) {
   switch (item.kind) {
     case 'pay': {
-      let pay = getMonthlyPay(rules, S.status, S.rank);
+      let pay = getMonthlyPay(rules, S.status, S.rank, Number(S.ym.slice(0, 4)));
       if (S.flags.payCutUntil && S.ym < S.flags.payCutUntil) pay -= Math.floor(pay / 5); // 감봉: 월급 1/5 감액 [S_new_1]
       S.money.cash += pay;
       S.money.paid += pay;
-      const dep = Math.min(S.money.monthlyDeposit, rules.pay.savings.monthlyCap.m);
+      const dep = Math.min(S.money.monthlyDeposit, savingsCap(rules, S.ym));
       if (dep > 0 && S.money.cash >= dep) {
         S.money.cash -= dep;
         S.money.savings += dep;
@@ -463,10 +577,11 @@ export function fire(S, rules, item, opts = {}) {
     case 'discharge': {
       if (S.money.savings > 0) {
         const s = S.money.savings;
-        S.money.cash += s * 2; // 원금 + 100% 매칭 (이자 제외 — M1 단순화)
-        S.money.payout = s * 2;
+        const pay = Math.round(s * (1 + matchRate(rules, S.dates.discharge))); // 원금 + 전역 시점 매칭 (이자 제외 — M1 단순화)
+        S.money.cash += pay;
+        S.money.payout = pay;
         S.money.savings = 0;
-        log(S, `내일준비적금 만기 수령 +${s * 2}원`);
+        log(S, `내일준비적금 만기 수령 +${pay}원`);
       }
       S.phase = 'end';
       log(S, `전역 (${S.dates.discharge})`);
@@ -474,7 +589,7 @@ export function fire(S, rules, item, opts = {}) {
     }
     case 'event': {
       const out = withEcho(S, item.ref, item.ref.run(S) || {});
-      if (out.t) { log(S, out.t); if (out.echoYm) S.log.at(-1).echo = out.echoYm; }
+      if (out.t) { log(S, out.t); if (out.echoYm) S.log.at(-1).echo = out.echoYm; tagFx(S, out); }
       applyOut(S, out);
       markFired(S, item.id);
       break;
@@ -483,12 +598,15 @@ export function fire(S, rules, item, opts = {}) {
       if (opts.auto === false && (opts.ask?.(item) ?? true)) return 'paused'; // ask: 이 결정을 물을지 (heart.js asks)
       const d = item.ref.build(S);
       // opts.choice: 수동 결정(UI)에서 고른 k. 없으면 첫 선택지 (자동 결정)
-      const choice = opts.choice ? d.choices.find((c) => c.k === opts.choice) : d.choices[0];
+      // pick 'random': 자동 진행에서 선택지를 고르게 (같은 날 입대한 사람들처럼 '남의 인생'을 돌릴 때)
+      const choice = opts.choice ? d.choices.find((c) => c.k === opts.choice)
+        : opts.pick === 'random' ? d.choices[Math.floor(rand(S) * d.choices.length)] : d.choices[0];
       if (!choice) throw new Error(`decision ${item.id}: no choice ${opts.choice ?? '(none)'}`);
       const out = withEcho(S, item.ref, item.ref.apply(S, choice.k) || {});
       log(S, out.t || `결정: ${d.title} → ${choice.label}`);
       if (out.echoYm) S.log.at(-1).echo = out.echoYm;
       S.log.at(-1).decision = true; // 전역 기록(주마등)이 결정 줄을 골라낸다
+      tagFx(S, out);
       (S.choices ??= []).push({ ym: S.ym, id: item.id, k: choice.k });
       applyOut(S, out);
       markFired(S, item.id);
@@ -597,11 +715,11 @@ export function stepMonth(S, rules, events = [], opts = {}) {
 }
 
 /** phase 'end'까지 자동 진행. 끝나지 않으면 예외 (무한루프 방지) */
-export function runGame(S, rules, { events = [], auto = true, maxMonths = 2000 } = {}) {
+export function runGame(S, rules, { events = [], auto = true, maxMonths = 2000, pick } = {}) {
   if (S.phase === 'pre' && !S.dates) throw new Error('runGame: enlist() first (입영 전 상태에서는 실행 불가)');
   let n = 0;
   while (S.phase !== 'end' && n < maxMonths) {
-    const r = stepMonth(S, rules, events, { auto });
+    const r = stepMonth(S, rules, events, { auto, pick });
     if (r === 'paused') throw new Error('runGame: paused in auto mode');
     n++;
   }
