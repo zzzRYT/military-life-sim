@@ -112,3 +112,38 @@ export function drawEnv(rng, env, { branch, enlistYm, months }) {
   const place = pk ? { id: pk, label: places[pk].label, travel: places[pk].travel, tags: places[pk].tags } : null;
   return { post, mood, captain, people, self, drills, abuse, place };
 }
+
+/** 인물 한 명 추첨 (후임·교체 인물용). others와 이름이 겹치지 않는다 */
+export function drawPerson(rng, env, role, ahead, enlistYear, others = []) {
+  const ability = wpick(rng, env.people.ability);
+  const temper = wpick(rng, env.people.temper);
+  const p = { role, ability, temper, label: personLabel(env, ability, temper), rel: 50 + env.people.temper[temper].rel, ahead };
+  const taken = others.map((o) => o.name);
+  const one = [p];
+  do namePeople(rng, env, one, enlistYear); while (taken.includes(p.name));
+  return p;
+}
+
+/**
+ * 인물 이름 (rules/env.json people.names). 별도 RNG 스트림으로 뽑아 기존 추첨·사건 결과를 바꾸지 않는다.
+ * 인물 출생 연대 = 입영연도 − 20 − born[역할] → 그 연대의 인기 이름. 한 판 안에서 이름이 겹치지 않는다
+ */
+export function namePeople(rng, env, people, enlistYear) {
+  const N = env.people.names;
+  const decades = Object.keys(N.given).sort();
+  const used = new Set();
+  for (const p of people) {
+    const d = String(Math.floor((enlistYear - 20 - (N.born[p.role] ?? 0)) / 10) * 10);
+    const pool = N.given[decades.filter((x) => x <= d).at(-1) ?? decades[0]];
+    let name;
+    do name = wpick(rng, N.surname) + pool[Math.floor(rng() * pool.length)]; while (used.has(name));
+    used.add(name);
+    p.name = name;
+  }
+}
+
+/** 입대 연도 — era.json range [from, to] 안에서 균등 (가정: 연도별 입영 인원 차이는 무시). 시드마다 고정 */
+export function drawYear(rng, era) {
+  const [a, b] = era?.range ?? [2026, 2026];
+  return a + Math.floor(rng() * (b - a + 1));
+}

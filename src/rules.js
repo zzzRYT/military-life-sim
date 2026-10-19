@@ -21,13 +21,15 @@ export function loadRules(dir = join(here, '..', 'rules')) {
     training: read('training.json'),
     soldierMos: read('soldier-mos.json'),
     hobbies: read('hobbies.json'),
+    era: read('era.json'),
   };
 }
 
-/** 복무개월: getServiceMonths(rules, 'soldier', 'army') → 18 */
-export function getServiceMonths(rules, status, branch) {
+/** 복무개월: getServiceMonths(rules, 'soldier', 'army') → 18. enlistIso를 주면 그 입영일의 시대 규정 (getService) */
+export function getServiceMonths(rules, status, branch, enlistIso) {
   const sm = rules.service.serviceMonths;
   if (status === 'soldier') {
+    if (enlistIso) return getService(rules, branch, enlistIso).months;
     const e = sm.soldier[branch];
     if (!e) throw new Error(`getServiceMonths: unknown branch ${branch}`);
     return e.m;
@@ -50,8 +52,11 @@ export function getLeaveDays(rules, status, branch) {
 }
 
 /** 월 급여(원). 병 rank 0~3(이병~병장) */
-export function getMonthlyPay(rules, status, rank = 0) {
+export function getMonthlyPay(rules, status, rank = 0, year) {
   if (status === 'soldier') {
+    const py = rules.era?.pay;
+    const y = year && py && Object.keys(py).filter((k) => !k.startsWith('_') && +k <= year).at(-1);
+    if (y) return py[y][rank];
     const e = rules.pay.soldier[String(rank)];
     if (!e) throw new Error(`getMonthlyPay: unknown soldier rank ${rank}`);
     return e.m;
@@ -74,4 +79,32 @@ export function getTrainingCenter(rules, status, branch) {
 /** 부대 평균 나이 (기본 22). S.flags.ageGap = 입영 나이 − 평균 */
 export function getAvgAge(rules, branch) {
   return rules.training?.avgAge?.[branch] ?? 22;
+}
+
+/** 입영 연도의 시대 (rules/era.json eras: from 오름차순). 범위 밖이면 가장 가까운 시대 */
+export function eraOf(rules, year) {
+  const eras = rules.era?.eras ?? [];
+  return eras.filter((e) => e.from <= year).at(-1) ?? eras[0] ?? null;
+}
+
+/** 일수 차 (b − a) */
+const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+
+/**
+ * 입영일 기준 복무 규정 → { months, cutDays }. 전역일 = 만료일(입영일, months) − cutDays.
+ * rules.era.service[branch]: [{from, m, cut?: {start, every, base?, max?}}] (from 오름차순).
+ * cut: 점진 단축 — 감축일수 = min(max, base + floor((입영일 − start)/every) + 1) (research/era-official.md §1-3)
+ */
+export function getService(rules, branch, enlistIso) {
+  const row = rules.era?.service?.[branch]?.filter((r) => r.from <= enlistIso).at(-1);
+  if (!row) return { months: getServiceMonths(rules, 'soldier', branch), cutDays: 0 };
+  if (!row.cut) return { months: row.m, cutDays: 0 };
+  const { start, every, base = 0, max = Infinity } = row.cut;
+  return { months: row.m, cutDays: Math.max(0, Math.min(max, base + Math.floor(dayDiff(start, enlistIso) / every) + 1)) };
+}
+
+/** 병 진급 단계 [이병, 일병, 상병] 개월. 육군 18개월 시대는 2-6-6 [S5 제32조], 그 전은 그 시절 육군 복무개월에 비례 (21개월 → 3-7-7은 2014 확인 [S_era_60], 나머지는 가정) */
+export function promoSteps(rules, enlistIso) {
+  const m = getService(rules, 'army', enlistIso).months;
+  return m <= 18 ? [2, 6, 6] : [Math.ceil((2 * m) / 18), Math.round((6 * m) / 18), Math.round((6 * m) / 18)];
 }

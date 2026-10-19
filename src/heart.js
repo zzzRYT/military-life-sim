@@ -53,7 +53,8 @@ const HOBBY_AXIS = {
 /** 고를 수 있는 취미: 근무 환경(place = engine where)에서 막힌 건 빼고, 성향에 맞는 것만 (최대 n). 모자라면 rf로 나머지에서 채운다 */
 export function hobbyChoices(heart, hobbies, rf, n = 4, place) {
   const tags = heart?.tags ?? [];
-  hobbies = hobbies.filter((h) => !h.block?.[place]);
+  const ps = [].concat(place); // 근무 환경 + 'nophone'(휴대폰 없던 시대) 등 여러 제약
+  hobbies = hobbies.filter((h) => !ps.some((p) => h.block?.[p]));
   const fit = hobbies.filter((h) => tags.includes(HOBBY_AXIS[h.id]))
     .sort((a, b) => tags.indexOf(HOBBY_AXIS[a.id]) - tags.indexOf(HOBBY_AXIS[b.id]));
   const rest = hobbies.filter((h) => !fit.includes(h));

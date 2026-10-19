@@ -126,3 +126,15 @@ test('engine: 전역 달 적금도 만기 수령에 포함 (잔여 적금 0)', (
   runGame(S, rules);
   assert.equal(S.money.savings, 0);
 });
+
+test('engine: autoEnlist(year) — 정한 해에 입영한다', async () => {
+  const { autoEnlist } = await import('../src/engine.js');
+  for (const y of [1998, 2008, 2019, 2026]) {
+    for (const seed of ['y1', 'y2', 'y3']) {
+      const S = newGame(seed, rules, { birth: '2006-05-01' });
+      autoEnlist(S, rules, y);
+      assert.equal(S.dates.enlist.slice(0, 4), String(y), `${seed} ${y}`);
+      assert.equal(Number(S.birth.slice(0, 4)) + S.age - 1, y);
+    }
+  }
+});

@@ -23,7 +23,7 @@ test('보직: 군종에 맞는 보직만 뽑히고, 그 보직 사건만 나온�
   let none = 0;
   let handed = 0;
   for (const branch of ['army', 'navy', 'airforce', 'marine']) {
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 400; i++) { // 희귀 보직(w 1)까지 한 번은 나오게 — 200판이면 사진병이 운에 따라 빠진다
       const S = newGame(`duty-${branch}-${i}`, rules, { birth: '2006-05-01', status: 'soldier', branch });
       autoEnlist(S, rules); runGame(S, rules, { events: EVENTS });
       const logs = S.log.map((l) => l.text).join('\n');

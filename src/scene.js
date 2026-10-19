@@ -1,6 +1,8 @@
 // src/scene.js — 픽셀 장면 (128×72). 이번 달 사건 id → 장소, 없으면 근무지·주특기의 기본 장소.
 // 이미지 에셋 없이 사각형만으로 그린다. 캔버스가 없는 node에서도 sceneOf는 돌아간다 (테스트).
 
+import { HEAVY } from './body.js';
+
 export const W = 128, H = 72;
 
 // 사건 id → 장소. 위에서부터 첫 일치. 순서가 의미 있다 (cook_field는 kitchen보다 hill이 먼저).
@@ -21,11 +23,13 @@ const BY_ID = [
   [/cook_field|eval_combat|eval_marksman|w3_rifle|w4_combat|zeroing|firing_data|mine|field_wire|demolition|breaching|drone|depot_myth|farm|_sf_/, 'hill'],
   [/cook/, 'kitchen'],
   [/sitroom|clerk|orderly|photo_general|video|content_security|ops_crew|depot|ammo|handover|duty_draft|savings/, 'office'],
-  [/illness|sick_call|accident|medic|unfit|injury|knee/, 'medic'],
+  [/illness|sick_call|accident|medic|unfit|injury|knee|body_scale/, 'medic'],
   [/chaplain|religion/, 'chapel'],
   [/leave|_out$|tourist|home|cherry|date|birthday|holiday/, 'town'],
   [/enter|w2_basic|graduate|eval_foot|eval_fitness|leadership|ceremony|squad_leader|snow|mower|tennis|band/, 'parade'],
-  [/hobby_|letter|phone|lounge|rough|abuse|group_punish|barber|laundry|craving|night_watch|old_brother|young_one|age|cold|gomsin|gomusin|d100|easy|desert|family|grandpa/, 'room'],
+  [/hobby_|health_habit|letter|phone|lounge|rough|abuse|group_punish|barber|laundry|craving|night_watch|old_brother|young_one|age|cold|gomsin|gomusin|d100|easy|desert|family|grandpa/, 'room'],
+  [/t_hero|t_relief|t_cat/, 'town'],
+  [/^(p_|h_|t_|era_)/, 'room'], // 사람·시대 장면은 생활관이 기본 (위 규칙에 걸리면 그쪽)
 ];
 const NIGHT = /night|watch|sitroom|lounge|nll|guard|scramble/;
 // 연간 훈련(drill)은 훈련 종류로 — 경계 투입은 근무지 기본 장소 그대로
@@ -105,6 +109,7 @@ function soldier(x, y, o) {
   R(U, x + 1, y + 9, 8, 9); R(U, x, y + 10, 1, 7); R(U, x + 9, y + 10, 1, 7);
   if (!o.navy && !o.civ) for (const [dx, dy, c] of [[2, 10, U2], [6, 12, U3], [3, 14, U3], [7, 15, U2], [1, 16, U2], [5, 17, U2]]) R(c, x + dx, y + dy);
   else if (o.navy) R('#fff', x + 3, y + 9, 4, 1); // 세일러 칼라
+  if (o.chub) { R(U, x - 1, y + 12, 1, 5); R(U, x + 10, y + 12, 1, 5); R(U, x + 1, y + 18, 8, 1); } // 배·옆구리
   R(SK, x + 4, y + 9, 2, 1); // 목
   R(SK, x, y + 17); R(SK, x + 9, y + 17); // 손
   if (o.vest) { R('#e8742c', x + 1, y + 9, 8, 8); R('#c95e1f', x + 4, y + 10, 2, 7); }
@@ -123,6 +128,7 @@ function soldier(x, y, o) {
   R('#5a3d2a', x + 2, y + 4, 2, 1); R('#5a3d2a', x + 6, y + 4, 2, 1);
   if (o.drunk) { R(INK, x + 2, y + 5, 2, 1); R(INK, x + 6, y + 5, 2, 1); } else { R(INK, x + 3, y + 5); R(INK, x + 6, y + 5); } // 취하면 풀린 눈
   R(SHADE, x + 4, y + 6, 2, 1);
+  if (o.chub) { R(SK, x, y + 6, 1, 2); R(SK, x + 9, y + 6, 1, 2); } // 볼살
   const M = '#9a4436';
   if (o.mood >= 60) { R(M, x + 3, y + 7); R(M, x + 6, y + 7); R(M, x + 4, y + 8, 2, 1); R('#f2a0a0', x + 2, y + 7); R('#f2a0a0', x + 7, y + 7); }
   else if (o.mood < 35) { R(M, x + 4, y + 7, 2, 1); R(M, x + 3, y + 8); R(M, x + 6, y + 8); }
@@ -159,6 +165,7 @@ export function outfit(S, key) {
       : INDOOR.has(key) ? 'none' : key === 'town' ? dress ?? 'beret' : dress ?? 'cap');
   return {
     hat, rank: S.rank ?? 0, mood: S.st?.mind ?? 50, marine: S.branch === 'marine',
+    chub: !!S.body && S.body.kg - S.body.kg0 >= HEAVY,
     navy: S.branch === 'navy' && !FIELD.has(key) && key !== 'tank',
     gun: FIELD.has(key) && key !== 'gas', pack: key === 'march', paint: key === 'hill',
     ear: { airbase: '#e8c234', pcroom: '#222' }[key], apron: key === 'kitchen', vest: key === 'beach',

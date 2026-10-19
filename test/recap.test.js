@@ -22,12 +22,12 @@ test('recap: 시드 여러 개 — 보고서 숫자가 판과 맞는다', () => 
   for (const seed of ['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8']) {
     const S = play(seed);
     const R = buildRecap(S, rules);
-    const pays = S.log.filter((l) => l.text.startsWith('월급')).reduce((a, l) => a + Number(l.text.match(/\+(\d+)/)[1]), 0);
+    const pays = S.log.filter((l) => /^월급 \+/.test(l.text)).reduce((a, l) => a + Number(l.text.match(/\+(\d+)/)[1]), 0);
     assert.equal(R.paid, pays, seed);
     assert.ok(R.days > 0 && R.months === S.hist.length && R.months > 0, seed);
     assert.ok(R.lowest.mood <= R.highest.mood, seed);
     assert.ok(R.reel.length > 0 && R.reel.length <= Math.max(14, R.reel.filter((l) => l.decision).length + 20), seed);
-    assert.ok(!R.reel.some((l) => l.text.startsWith('월급')), seed);
+    assert.ok(!R.reel.some((l) => /^월급 \+/.test(l.text)), seed);
     assert.ok(R.rarity > 0 && R.rarity <= 100, seed);
     if (!R.early) assert.equal(R.end, S.dates.discharge, seed);
   }
@@ -52,4 +52,14 @@ test('recap: pickReel — 이정표는 전부 남고, 순서 유지, 나머지�
 test('recap: rarity — 육군이 해병대보다 흔하고, 100% 미만', () => {
   const at = (branch) => rarity({ status: 'soldier', branch, route: 'conscript', mos: Object.keys(rules.soldierMos[branch])[0] }, rules);
   assert.ok(at('army') > at('marine') && at('army') < 100);
+});
+
+test('recap: 같은 날 입대한 사람들 — 입영일이 같고 결정론', async () => {
+  const { cohort } = await import('../src/recap.js');
+  const S = play('co1');
+  const a = cohort(S, rules, EVENTS), b = cohort(S, rules, EVENTS);
+  assert.equal(a.length, 3);
+  assert.deepEqual(a, b);
+  assert.ok(a.every((c) => c.name && c.line && c.rank));
+  assert.equal(new Set(a.map((c) => c.name)).size, 3);
 });
