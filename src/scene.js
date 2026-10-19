@@ -20,16 +20,16 @@ const BY_ID = [
   [/engineroom|boiler|power_grid/, 'engine'],
   [/jet|fod|scramble|fuel|fire_foam|cargo|tower/, 'airbase'],
   [/peak|radar_site|airdefense|shingung/, 'peak'],
-  [/cook_field|eval_combat|eval_marksman|w3_rifle|w4_combat|zeroing|firing_data|mine|field_wire|demolition|breaching|drone|depot_myth|farm|_sf_/, 'hill'],
+  [/cook_field|eval_combat|eval_marksman|w3_rifle|w4_combat|zeroing|firing_data|mine|field_wire|demolition|breaching|drone|depot_myth|farm|_sf_|c_brass/, 'hill'],
   [/cook/, 'kitchen'],
   [/sitroom|clerk|orderly|photo_general|video|content_security|ops_crew|depot|ammo|handover|duty_draft|savings/, 'office'],
-  [/illness|sick_call|accident|medic|unfit|injury|knee|body_scale/, 'medic'],
+  [/illness|sick_call|accident|medic|unfit|injury|knee|body_scale|s_camp/, 'medic'],
   [/chaplain|religion/, 'chapel'],
-  [/leave|_out$|tourist|home|cherry|date|birthday|holiday/, 'town'],
+  [/leave|_out$|tourist|home|c_bus|cherry|date|birthday|holiday/, 'town'],
   [/enter|w2_basic|graduate|eval_foot|eval_fitness|leadership|ceremony|squad_leader|snow|mower|tennis|band/, 'parade'],
   [/hobby_|health_habit|letter|phone|lounge|rough|abuse|group_punish|barber|laundry|craving|night_watch|old_brother|young_one|age|cold|gomsin|gomusin|d100|easy|desert|family|grandpa/, 'room'],
   [/t_hero|t_relief|t_cat/, 'town'],
-  [/^(p_|h_|t_|era_)/, 'room'], // 사람·시대 장면은 생활관이 기본 (위 규칙에 걸리면 그쪽)
+  [/^(p_|h_|t_|era_|r_|c_|s_)/, 'room'], // 사람·시대 장면은 생활관이 기본 (위 규칙에 걸리면 그쪽)
 ];
 const NIGHT = /night|watch|sitroom|lounge|nll|guard|scramble/;
 // 연간 훈련(drill)은 훈련 종류로 — 경계 투입은 근무지 기본 장소 그대로
