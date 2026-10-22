@@ -197,7 +197,7 @@ import { buildRecap, cohortStats, headline } from './src/recap.js';
 import { drawYear } from './src/draw.js';
 import { makeRng } from './src/rng.js';
 import { HABITS, gain, shape } from './src/body.js';
-import { drawScene, drawAvatar } from './src/scene.js';
+import { drawScene, drawAvatar, drawPortrait, dissolve, castOf, actorOf, ACTOR_LABEL } from './src/scene.js';
 
 const RULE_FILES = ['service', 'promotion', 'pay', 'leave', 'weights', 'assumptions', 'env', 'training', 'soldier-mos', 'hobbies', 'era'];
 const rules = Object.fromEntries(await Promise.all(RULE_FILES.map(async (n) => [n, await (await fetch(`./rules/${n}.json`, { cache: "no-cache" })).json()])));
@@ -415,11 +415,37 @@ function render() {
   const roleName = ROLE_NAME;
   $('people').innerHTML = S.phase === 'pre' || S.phase === 'train' ? '<dd class="sub" style="grid-column:1/-1">자대에 가면 만나게 돼요.</dd>' : S.env.people.filter((p) => p.gone || here(S, p.role)).map((p) => `<dt>${roleName[p.role]}</dt><dd>${p.name ? `<strong>${p.name}</strong> · ` : ''}${p.gone ? '<span class="sub">전역</span>' : p.label} <span class="mono sub">${Math.round(p.rel)}</span></dd>`).join('');
   $('map').innerHTML = monthCells.map((c) => `<span title="${fmtYm(c.ym)}" style="background:color-mix(in srgb, var(--gs) ${c.mood}%, var(--bg-a));${c.mood < 60 ? 'color:var(--t)' : ''}">${c.icon}</span>`).join('');
-  $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text.replace(/([+ ])(\d{4,})원/g, (m, a, n) => a + Number(n).toLocaleString('ko-KR') + '원')}${l.echo ? ` <small class="echo">← ${fmtYm(l.echo)}</small>` : ''}${chips(l)}</span></li>`).join(''); // echo: 되부르기 원래 흔적의 연월
+  $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${tagOf(actorOf(l.id))}${l.text.replace(/([+ ])(\d{4,})원/g, (m, a, n) => a + Number(n).toLocaleString('ko-KR') + '원')}${l.echo ? ` <small class="echo">← ${fmtYm(l.echo)}</small>` : ''}${chips(l)}</span></li>`).join(''); // echo: 되부르기 원래 흔적의 연월
   for (const b of document.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String(+b.dataset.speed === speed));
   $('auto').setAttribute('aria-pressed', String(auto));
-  drawScene($('scene').getContext('2d'), S, pending?.id, Math.floor(performance.now() / FRAME)); drawAvatar($('avatar').getContext('2d'), S);
+  paintScene(); drawAvatar($('avatar').getContext('2d'), S);
 }
+
+// ── 장면 전이 (docs/06 §4): 상대 상태(castOf)가 바뀌면 t를 0부터 다시 세고, 장소가 바뀌면 이전 그림을 4프레임 디더로 녹인다 ──
+const STILL = matchMedia('(prefers-reduced-motion: reduce)').matches; // 동작 줄이기: 미끄러짐·디졸브 없이 끝 그림
+const scn = { key: '', cast: '', castAt: 0, prev: null, prevAt: 0 };
+function paintScene() {
+  const c = $('scene').getContext('2d'), fr = Math.floor(performance.now() / FRAME);
+  const cast = castOf(S, pending?.id), cs = cast ? `${cast.id}|${cast.beat}` : '';
+  if (cs !== scn.cast) { scn.cast = cs; scn.castAt = fr; }
+  const before = !STILL && scn.key ? c.getImageData(0, 0, 128, 72) : null;
+  const { key } = drawScene(c, S, pending?.id, fr, { t: STILL ? 99 : fr - scn.castAt });
+  if (key !== scn.key) { scn.prev = before; scn.prevAt = fr; scn.key = key; }
+  if (scn.prev) { const p = (fr - scn.prevAt) / 4; if (p >= 1) scn.prev = null; else dissolve(c, scn.prev, p); }
+}
+// 멈춤·결정 중에도 장면은 움직인다 (레터박스가 닫히고 물음표가 뜬다)
+setInterval(() => { if (S?.dates && !recap && S.phase !== 'end') paintScene(); }, FRAME);
+
+// 사건의 상대 → 이름·관계치. 결정은 build가 who(역할)를 줄 수 있다 — 없으면 종류별 기본 인물
+const WHO = { junior: 'junior', senior: 'senior', peer: 'peer', nco: 'sfc', officer: 'lt' };
+function whoOf(actor, role) {
+  if (actor === 'family') return { name: '부모님', rel: S.bonds?.family };
+  if (actor === 'lover') return S.bonds?.lover == null ? null : { name: '여자친구', rel: S.bonds.lover };
+  if (actor === 'civ') return { name: '부대 밖 사람', rel: null };
+  const p = S.env.people.find((x) => x.role === (role ?? WHO[actor]));
+  return p && { name: p.name ? `${ROLE_NAME[p.role]} ${p.name}` : ROLE_NAME[p.role], label: p.label, rel: p.rel };
+}
+const tagOf = (a) => a ? `<i class="who-tag t-${a}">${ACTOR_LABEL[a]}</i>` : '';
 
 // 로그 줄의 변화 칩: 멘탈 −8 · 동기 박민준 +25 (엔진 tagFx가 단 값)
 const FX_L = { fit: '체력', mind: '멘탈', skill: '숙련', rel: '관계' };
@@ -601,16 +627,25 @@ function openDecision() {
   const item = S.queue[0];
   const d = item.ref.build(S);
   pending = item;
-  const m = $('modal');
+  const m = $('modal'), actor = actorOf(item.id), who = actor && (typeof d.who === 'object' ? d.who : whoOf(actor, d.who)); // who: 역할 이름 또는 {name, rel} (중대장처럼 인물표에 없는 사람)
   m.innerHTML = `<div class="meta"><span class="chip b">중대 결정</span><span class="cap">${rankName(rules, S.status, S.rank)} · ${fmtYm(S.ym)}</span><span class="chip" style="margin-left:auto">시간 정지</span></div>
-    <h3>${d.title}</h3><p>${d.body}</p>${d.src ? `<div class="src">자료 · ${d.src}</div>` : ''}${d.help ? `<div class="src help">${d.help}</div>` : ''}
-    <div class="opts">${d.choices.map((c, i) => `<button class="opt${i === 0 ? ' def' : ''}" data-k="${c.k}"><span class="k">${i + 1}</span><span><b>${c.label}</b><small>${c.hint}${i === 0 ? ' <span class="chip g" style="height:20px;font-size:11px;padding:0 6px">무난한 기본값</span>' : ''}</small></span></button>`).join('')}</div>`;
+    ${whoHtml(actor, who)}<h3>${d.title}</h3><p>${d.body}</p>${d.src ? `<div class="src">자료 · ${d.src}</div>` : ''}${d.help ? `<div class="src help">${d.help}</div>` : ''}
+    <div class="opts">${d.choices.map((c, i) => `<button class="opt${i === 0 ? ' def' : ''}" data-k="${c.k}"><span class="k">${i + 1}</span><span><b>${c.label}</b>${arrows(c.rel)}<small>${c.hint}${i === 0 ? ' <span class="chip g" style="height:20px;font-size:11px;padding:0 6px">무난한 기본값</span>' : ''}</small></span></button>`).join('')}</div>`;
+  if (who) drawPortrait(m.querySelector('.who canvas').getContext('2d'), S, actor);
   m.onclick = (e) => { const b = e.target.closest('[data-k]'); if (b) choose(b.dataset.k); };
   m.onkeydown = (e) => { const c = d.choices[+e.key - 1]; if (c) choose(c.k); };
   m.oncancel = (e) => e.preventDefault();
   m.showModal();
   render();
 }
+// 결정 시트의 상대 줄: 얼굴 · 상대 태그 · 이름 · 관계 막대
+function whoHtml(actor, who) {
+  if (!who) return '';
+  const r = who.rel == null ? '' : `<div class="rel"><span>${who.label ? who.label + ' · ' : ''}관계</span><div class="bar${who.rel < 25 ? ' d' : who.rel < 50 ? ' w' : ''}"><i style="width:${Math.round(who.rel)}%"></i></div><span class="mono">${Math.round(who.rel)}</span></div>`;
+  return `<div class="who"><canvas width="20" height="20" aria-hidden="true"></canvas><div><div class="nm">${tagOf(actor)}<b>${who.name}</b></div>${r}</div></div>`;
+}
+// 선택지 아래 관계 방향: rel {선임: 1, 후임: -2} → "선임 ▲ 후임 ▼▼" (부호와 글자를 함께 — 색만으로 구분하지 않는다)
+const arrows = (rel) => rel && Object.keys(rel).length ? `<span class="rel-dir">${Object.entries(rel).map(([a, n]) => `<em class="${n > 0 ? 'up' : 'dn'}">${ACTOR_LABEL[a] ?? a} ${(n > 0 ? '▲' : '▼').repeat(Math.min(2, Math.abs(n)))}</em>`).join('')}</span>` : '';
 function choose(k) {
   fire(S, rules, S.queue.shift(), { choice: k });
   pending = null;

@@ -75,6 +75,7 @@ export const PEOPLE_EVENTS = [
       const boss = here(S, 'roomSenior') ? 'roomSenior' : 'senior';
       return {
         title: '너 때는 안 그랬냐?',
+        who: boss, // 결정 창에 세울 사람 (docs/06 §2-2)
         body: fmt(S, `{${boss}}이 침상 끝에 걸터앉아 말합니다. "{junior.name}이 요즘 너무 풀렸다. 네가 맞선임이니까 군기 좀 잡아라. 너 때는 안 그랬냐?" 생활관이 조용해졌습니다.`),
         choices: [
           { k: 'do', label: '시키는 대로 갈군다', hint: '선임은 만족 · 후임이 나를 본다' },

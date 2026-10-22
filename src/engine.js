@@ -101,7 +101,7 @@ function applyFx(S, fx) {
 }
 
 /**
- * 사건·결정 결과 적용. out = { t?, fx?, boost?: 개월(원동력: 그동안 매달 멘탈 +1), mark?: {set: {id: data}, del: [id]}, later?, rel?: {role: Δ}, punish?: {kind, n}, ban?: 개월, ending?: ENDINGS 키, shorten?: 총 복무개월 }
+ * 사건·결정 결과 적용. out = { t?, fx?, boost?: 개월(원동력: 그동안 매달 멘탈 +1), mark?: {set: {id: data}, del: [id]}, later?, rel?: {role|'family'|'lover': Δ}, punish?: {kind, n}, ban?: 개월, ending?: ENDINGS 키, shorten?: 총 복무개월 }
  * punish.kind: reprimand 견책 | confine 근신 | leaveCut 휴가단축(n일) | payCut 감봉(n개월) | drill 군기교육(n일) | brig 영창(n일, 2020-08 폐지 전) | demote 강등 [S3 제57조]
  */
 function applyOut(S, out) {
@@ -111,6 +111,7 @@ function applyOut(S, out) {
   for (const k of out.mark?.del ?? []) delete S.marks[k];
   if (out.later) S.delayed.push({ dueYm: shiftMonth(S.ym, out.later.inMonths), id: out.later.id });
   for (const [role, d] of Object.entries(out.rel || {})) {
+    if ((role === 'family' || role === 'lover') && S.bonds?.[role] != null) { S.bonds[role] = clampSt(S.bonds[role] + d); continue; } // 가족·연인은 인물이 아니라 S.bonds
     const p = S.env.people.find((x) => x.role === role);
     if (p) p.rel = clampSt(p.rel + d);
   }
@@ -591,7 +592,7 @@ export function fire(S, rules, item, opts = {}) {
     }
     case 'event': {
       const out = withEcho(S, item.ref, item.ref.run(S) || {});
-      if (out.t) { log(S, out.t); if (out.echoYm) S.log.at(-1).echo = out.echoYm; tagFx(S, out); }
+      if (out.t) { log(S, out.t); S.log.at(-1).id = item.id; if (out.echoYm) S.log.at(-1).echo = out.echoYm; tagFx(S, out); } // id: 장면이 이 줄로 상대를 세운다 (scene.js castOf)
       applyOut(S, out);
       markFired(S, item.id);
       break;
@@ -608,6 +609,7 @@ export function fire(S, rules, item, opts = {}) {
       log(S, out.t || `결정: ${d.title} → ${choice.label}`);
       if (out.echoYm) S.log.at(-1).echo = out.echoYm;
       S.log.at(-1).decision = true; // 전역 기록(주마등)이 결정 줄을 골라낸다
+      S.log.at(-1).id = item.id;
       tagFx(S, out);
       (S.choices ??= []).push({ ym: S.ym, id: item.id, k: choice.k });
       applyOut(S, out);
