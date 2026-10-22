@@ -46,8 +46,8 @@ test('training: 사격 초점 판들이 사격 포상을 더 자주 받는다 (4
   assert.ok(focused > none * 2, `marksman focus ${focused} vs other ${none}`);
 });
 
-test('training: 하나에 집중한 판이 고르게 한 판보다 포상 총합이 많다 (40판)', () => {
-  const total = (focus) => Array.from({ length: 40 }, (_, i) => play('s' + i, focus)).reduce((n, S) => n + S.rewards.length, 0);
+test('training: 하나에 집중한 판이 고르게 한 판보다 포상 총합이 많다 (100판)', () => {
+  const total = (focus) => Array.from({ length: 100 }, (_, i) => play('s' + i, focus)).reduce((n, S) => n + S.rewards.length, 0);
   assert.ok(total('marksman') > total(null));
 });
 

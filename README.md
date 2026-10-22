@@ -15,6 +15,10 @@
 | [research/official.md](research/official.md) | 병무청·국방부·법령 공식 데이터 조사 (출처 코드 `[Sx]`) |
 | [research/era-official.md](research/era-official.md) | 입대 연도별 복무기간·봉급·적금·휴대폰·사건사고 (1990~2026) |
 | [research/era-culture.md](research/era-culture.md) | 시대별 병영 문화·부조리·여가·은어 |
+| [research/community-lore.md](research/community-lore.md) | 커뮤니티·언론 '군대 공감' 썰 35개 (짬타이거, 맛다시, 제설, 군대스리가, 전역 미신 등) |
+| [research/yearly-routine.md](research/yearly-routine.md) | 병사의 1년: 계절 훈련·작업 리듬과 군종별 반복 일과 |
+| [research/history-moments.md](research/history-moments.md) | 복무 중에 터진 나라 일(1995~2026)과 전역하니 바뀐 세상 |
+| content/events-lore.js · events-routine.js · events-nation.js | 위 세 리서치 노트를 사건·딜레마·되부르기로 옮긴 콘텐츠 (생활 썰 · 계절·군종 일과 · 국가 사건과 "전역하고 보니") |
 
 ## 지원 타입
 
