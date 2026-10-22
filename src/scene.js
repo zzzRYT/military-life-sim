@@ -7,6 +7,16 @@ export const W = 128, H = 72;
 
 // 사건 id → 장소. 위에서부터 첫 일치. 순서가 의미 있다 (cook_field는 kitchen보다 hill이 먼저).
 const BY_ID = [
+  // 군대 썰·계절 일과·국가 사건 (content/events-lore.js · events-routine.js · events-nation.js)
+  [/^lore_(matdasi|combat_ration|gunppang|fry_gunppang)|^rt_(yugyeok|kctc|miles|wasp|gop_weed|shovel|standby|kimjang|alert|ufs|weapon|reserve|heat|recovery|frostbite|cold_adapt)|^h_(rusa|flood|snow_2014|olympic|goseong|ulchin|asf|foot|quake)/, 'hill'],
+  [/^lore_(golden_cart|cart_vs_post)/, 'px'],
+  [/^lore_(cat_|leaf|vip|snow_trash|xmas_snow|army_soccer|airforce_jokgu|vip_paint)|^rt_(sports_day|snow_lines|boot_)/, 'parade'],
+  [/^lore_(return_bus|dad_story|gate_look)|^h_album/, 'town'],
+  [/^rt_navy_port/, 'port'],
+  [/^rt_navy_/, 'ship'],
+  [/^rt_af_/, 'airbase'],
+  [/^lore_(cook_2am|cook_back)/, 'kitchen'],
+  [/^lore_(boot_parcel|letter_print|school_letter|reply_letter|comfort_box|boots|locker|rollcall|night_ghost|wake_guard|family_ask|uniform_size|birthday|px_|matdasi_share|countdown|cap_|pass_down|mod_clock|after_|parcel_|carry_back|cold_back)|^rt_(heater|inspection|march_carry)|^h_(subma|imf|flu|mers|covid|visit|food|world|interpreter)/, 'room'],
   [/_px_/, 'px'],
   [/drive/, 'drive'],
   [/shell_loading|kaav|_k9_/, 'tank'],
