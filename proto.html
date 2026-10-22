@@ -211,9 +211,9 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
   <div class="panel">
     <div class="kicker">군 생활 시뮬레이터 · 프로토타입</div>
     <h1>스무 살, 당신의 군 생활이<br>시작됩니다</h1>
-    <p class="sub" id="startSub">입대한 해부터 신체등급, 군종, 특기까지 — 모든 건 추첨으로 정해집니다.<br>1995년 GOP와 2024년 공군은 월급도, 휴대폰도, 선임도 다릅니다. 내가 입대한 해를 골라 그 시절을 다시 살아 볼 수도 있습니다.</p>
+    <p class="sub" id="startSub">입대한 해부터 신체등급, 군종, 특기까지 — 모든 건 추첨으로 정해집니다.<br>1995년 GOP와 2024년 공군은 월급도, 휴대폰도, 선임도 다릅니다.</p>
     <div class="draw-cards" id="drawCards"></div>
-    <div class="row" id="startRow"><label class="sub">입대 연도 <select id="year"><option value="">운명에 맡긴다</option></select></label><button class="big primary" id="btnStart">입대하기</button></div>
+    <div class="row" id="startRow"><button class="big primary" id="btnStart">입대하기</button></div>
   </div>
 </div>
 
@@ -420,14 +420,10 @@ $('btnHeart').onclick = () => {
   render(); loop();
 };
 
-// 입대 연도: 고르면 그 해, 아니면 시드로 추첨 (?year= 로 고정 가능)
+// 입대 연도는 고를 수 없다 — 시드로 추첨 (?year= 는 검증용 고정)
 function pickYear() {
-  const v = +($('year').value || q.get('year') || 0);
-  return v || drawYear(makeRng(`${seed}-year`), rules.era);
+  return +(q.get('year') || 0) || drawYear(makeRng(`${seed}-year`), rules.era);
 }
-{ const [a, b] = rules.era.range ?? [2026, 2026];
-  for (let y = b; y >= a; y--) $('year').insertAdjacentHTML('beforeend', `<option value="${y}">${y}년</option>`);
-  if (q.get('year')) $('year').value = q.get('year'); } // "같은 해, 다른 인생"으로 왔으면 그 해가 골라져 있다
 $('btnStart').onclick = () => spinDraw();
 
 // ── 이어하기: 달이 끝날 때마다 브라우저에 저장 (새로고침·탭 종료 대비). 큐(사건 함수 참조)는 다음 달에 다시 짠다 ──
@@ -591,7 +587,7 @@ function showReport() {
   const CS = cohortStats(S, rules, EVENTS);
   shareText = [`${R.era ? `[${R.era.label}] ` : ''}${R.enlist.slice(0, 4)}년 입대 · ${BRANCH_L[S.branch]} ${mosLabel()} · ${postLabel()}`,
     `${R.ending} · ${R.days}일 · ${R.rank}`, `“${headline(S.log)}”`,
-    `같은 날 입대한 ${CS.n}명 중 포상휴가 상위 ${CS.rewardTop}%`, `${location.origin}${location.pathname}?seed=${seed}&year=${R.enlist.slice(0, 4)}`].join('\n');
+    `같은 날 입대한 ${CS.n}명 중 포상휴가 상위 ${CS.rewardTop}%`, `${location.origin}${location.pathname}?seed=${seed}`].join('\n');
   $('report').innerHTML = `
     <div class="stamp">${R.early ? '복무<br>종료' : '전역'}</div>
     <div class="kicker">전역 기록 · seed <span class="mono">${seed}</span></div>
@@ -620,7 +616,6 @@ function showReport() {
       <button id="btnReplayReel">주마등 다시 보기</button>
       <button id="btnShare">결과 복사</button>
       <button onclick="print()">인쇄 / PDF</button>
-      <button onclick="location.href=location.pathname + '?year=${R.enlist.slice(0, 4)}'">${R.enlist.slice(0, 4)}년, 다른 인생</button>
       <button class="big" onclick="location.href=location.pathname" style="background:var(--accent);color:var(--card);border-color:var(--accent)">새로운 인생</button>
     </div>`;
   $('btnReplayReel').onclick = playReel;

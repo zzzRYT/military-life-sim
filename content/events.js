@@ -189,7 +189,7 @@ export const EVENTS = [
     run: () => ({ t: '정밀검사에서 복무를 이어 가기 어려운 질환이 발견되었습니다. 재신체검사를 거쳐 전역합니다.', fx: { mind: -10 }, ending: 'medical' }) },
 
   { id: 'unfit_review', kind: 'decision', when: { phase: ['train', 'serve'] }, gap: 6, w: 10, src: '병역법 제65조 · 현역복무 부적합 심사',
-    c: (S) => S.st.mind < 20,
+    c: (S) => S.st.mind < 15 && !S.marks.s_camp, // 내리막 판은 그린캠프(events-spiral)가 먼저
     p: 0.3,
     build: () => ({
       title: '현역복무 부적합 심사를 받을까?',
@@ -261,7 +261,7 @@ export const EVENTS = [
 
   // ── 내 비행: 탈영 (멘탈 바닥일 때만) ──
   { id: 'desert_self', kind: 'decision', when: { phase: ['serve'] }, gap: 3, w: 10, max: 2, src: '군형법 제30조(군무이탈), 제79조(무단이탈)',
-    c: (S) => S.st.mind < 30,
+    c: (S) => S.st.mind < 22, // 큰 이슈·내리막으로 골짜기가 깊어져 30이면 너무 자주 열린다
     p: (S) => 0.1 + pct(S) * 0.3,
     build: () => ({
       title: '여기서 나가고 싶다',
@@ -314,7 +314,10 @@ import { HEALTH_EVENTS } from './events-health.js';
 import { PEOPLE_EVENTS, PEOPLE_ECHOES } from './events-people.js';
 import { TAIL_EVENTS } from './events-tail.js';
 import { ERA_EVENTS } from './events-era.js';
-EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS, ...SPECIALTY_EVENTS, ...DUTY_EVENTS, ...LEAVE_EVENTS, ...HEALTH_EVENTS, ...PEOPLE_EVENTS, ...TAIL_EVENTS, ...ERA_EVENTS);
+import { RANK_EVENTS } from './events-rank.js';
+import { CRISIS_EVENTS, LATE_EVENTS } from './events-crisis.js';
+import { SPIRAL_EVENTS } from './events-spiral.js';
+EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS, ...SPECIALTY_EVENTS, ...DUTY_EVENTS, ...LEAVE_EVENTS, ...HEALTH_EVENTS, ...PEOPLE_EVENTS, ...TAIL_EVENTS, ...ERA_EVENTS, ...RANK_EVENTS, ...CRISIS_EVENTS, ...LATE_EVENTS, ...SPIRAL_EVENTS);
 
 for (const e of EVENTS) {
   const echo = [...(ECHOES[e.id] ?? []), ...(PLACE_ECHOES[e.id] ?? []), ...(PEOPLE_ECHOES[e.id] ?? [])]; // 흔적 문구가 먼저, 지역 문구는 그다음

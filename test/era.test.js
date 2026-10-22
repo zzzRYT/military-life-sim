@@ -70,7 +70,7 @@ test('era: 시대 한정 사건은 그 시대 판에서만 나온다', () => {
 const cost = (out) => Object.values(out.fx ?? {}).some((v) => v < 0) || Object.values(out.rel ?? {}).some((v) => v < 0)
   || !!out.punish || !!out.ban || !!out.ending || !!out.later;
 test('dilemma: 새 딜레마의 모든 선택지에 대가가 있다', () => {
-  const ds = EVENTS.filter((e) => e.kind === 'decision' && /^(p_|t_|h_|era_)/.test(e.id));
+  const ds = EVENTS.filter((e) => e.kind === 'decision' && /^(p_|t_|h_|era_|r_|c_|s_)/.test(e.id));
   assert.ok(ds.length >= 12, `dilemmas ${ds.length}`);
   for (const d of ds) {
     const base = game(`dl-${d.id}`, Number(d.when?.era ? { e01: 2000, e02: 2009, e03: 2016, e04: 2020, e05: 2024 }[d.when.era[0]] : 2015));
@@ -123,4 +123,70 @@ test('mos: 도입 전 특기는 그 해 입대자에게 안 나오고, 헌병은
   }
   assert.equal(mosName(rules, 'army', '321101', '2010-03'), '근무헌병');
   assert.equal(mosName(rules, 'army', '321101', '2024-03'), '근무군사경찰');
+});
+
+test('rank: 짬 규칙 위반은 옛 시대일수록 자주 나오고 더 잘 걸린다', () => {
+  const count = (y) => {
+    let n = 0, caught = 0;
+    for (let i = 0; i < 80; i++) {
+      const S = game(`rk${y}${i}`, y);
+      runGame(S, rules, { events: EVENTS, pick: 'random' });
+      n += Object.keys(S.flags).filter((k) => /^n_r_(?!rev_)/.test(k)).length;
+      caught += S.log.filter((l) => /동기 전체 집합|불려 간 건|"개념"/.test(l.text)).length;
+    }
+    return { n, caught };
+  };
+  const old = count(1998), now = count(2024);
+  assert.ok(old.n > now.n * 2, `taboo ${old.n} vs ${now.n}`);
+  assert.ok(old.caught > now.caught * 2, `caught ${old.caught} vs ${now.caught}`);
+});
+
+test('rank: 역부조리는 2014-08 이후에만, 요즘 군대일수록 자주', () => {
+  const count = (y) => {
+    let n = 0;
+    for (let i = 0; i < 80; i++) {
+      const S = game(`rv${y}${i}`, y);
+      runGame(S, rules, { events: EVENTS, pick: 'random' });
+      const k = Object.keys(S.flags).filter((f) => f.startsWith('n_r_rev_'));
+      if (k.length) assert.ok(S.dates.discharge >= '2014-08', `${y} ${k}`);
+      n += k.length;
+    }
+    return n;
+  };
+  assert.equal(count(2003), 0);
+  const mid = count(2016), now = count(2024);
+  assert.ok(now > mid && now >= 80, `rev ${mid} vs ${now}`);
+});
+
+test('crisis: 판마다 큰 이슈가 터지고, 기분이 한 번은 크게 꺼진다', () => {
+  let withCrisis = 0, dips = 0;
+  const N = 100;
+  for (let i = 0; i < N; i++) {
+    const S = game(`cr${i}`, 1995 + (i % 32));
+    runGame(S, rules, { events: EVENTS });
+    if (Object.keys(S.flags).some((k) => /^n_c_(brass|hit|theft|bus|knee|home)$/.test(k))) withCrisis++;
+    const h = S.hist.map((x) => x.mood);
+    if (h.some((v, j) => j >= 2 && h[j - 2] - v >= 8)) dips++;
+  }
+  assert.ok(withCrisis >= 90, `crisis ${withCrisis}/${N}`);
+  assert.ok(dips >= 60, `dips ${dips}/${N}`);
+});
+
+test('spiral: 내리막은 몇몇 판에만, 들어서면 기분이 꺼지고 그 끝에 그린캠프', () => {
+  let camps = 0, spirals = 0;
+  const N = 150;
+  for (let i = 0; i < N; i++) {
+    const S = game(`sv${i}`, 1995 + (i % 32));
+    runGame(S, rules, { events: EVENTS });
+    if (!S.flags.spiralSeen) continue;
+    spirals++;
+    if (S.flags.n_s_camp) { // 그린캠프는 골짜기에서 — 그 직전 기분이 입대 초보다 한참 낮다
+      camps++;
+      const h = S.hist.map((x) => x.mood), at = S.hist.findIndex((x) => x.ym >= S.flags.last_s_camp);
+      const start = (h[0] + h[1] + h[2]) / 3;
+      assert.ok(Math.min(...h.slice(0, at + 1)) <= start - 8, `no valley before camp ${h.slice(0, at + 1)}`);
+    }
+  }
+  assert.ok(spirals >= N * 0.08 && spirals <= N * 0.35, `spirals ${spirals}/${N}`);
+  assert.ok(camps >= N * 0.04 && camps <= N * 0.25, `camps ${camps}/${N}`);
 });
