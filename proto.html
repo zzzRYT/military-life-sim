@@ -6,7 +6,8 @@
 <title>군 생활 시뮬레이터 — 프로토타입</title>
 <!-- 프로토타입: 시작(추첨·입영 연기) + S5 메인 화면 간소판. `python3 -m http.server` 후 /proto.html?seed=abc -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&family=IBM+Plex+Mono:wght@400;600&family=Hahmlet:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Hahmlet:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <!-- rules.js가 node:fs 등을 import하므로 브라우저에선 빈 모듈로 대체 (fetch 로더는 M5) -->
 <script type="importmap">
 { "imports": {
@@ -15,163 +16,64 @@
   "node:url": "data:text/javascript,export const fileURLToPath=()=>''"
 } }
 </script>
-<style>
-:root {
-  --paper: #e9e8df; --card: #f6f5ef; --ink: #23261f; --muted: #646a5c; --line: #c9c8bb;
-  --accent: #4b5d2a; --accent-2: #6f8540; --warn: #9a6a1c; --good: #3f7a3a; --bad: #a3392f;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --paper: #1c1e19; --card: #252820; --ink: #e6e6dc; --muted: #a2a796; --line: #3a3e33;
-  --accent: #9fb56b; --accent-2: #7d9450; --warn: #d6a24e; --good: #86c07a; --bad: #e07a6e;
-} }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.55 "IBM Plex Sans KR", sans-serif; }
-.mono { font-family: "IBM Plex Mono", monospace; }
-header { padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 1; }
-.top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
-.dday { font: 600 28px "IBM Plex Mono", monospace; color: var(--accent); }
-.sub { color: var(--muted); }
-.ctl { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
-button, select { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 4px; padding: 2px 10px; cursor: pointer; }
-button[aria-pressed="true"] { background: var(--accent); color: var(--card); border-color: var(--accent); }
-.bar { height: 8px; background: var(--line); border-radius: 4px; margin-top: 8px; overflow: hidden; }
-.bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
-main { display: grid; grid-template-columns: 240px 1fr 260px; gap: 16px; padding: 16px; max-width: 1200px; margin: 0 auto; }
-@media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } main > section[aria-label="복무 기록"] { order: -1; } } /* 모바일: 장면·로그가 먼저 */
-section { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 12px; min-width: 0; }
-h2 { font-size: 13px; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
-.id-row { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
-canvas { image-rendering: pixelated; display: block; }
-#avatar { width: 64px; height: 64px; border: 1px solid var(--line); background: var(--paper); }
-#scene { width: 100%; aspect-ratio: 16/9; border-radius: 4px; }
-dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; font-size: 14px; }
-dt { color: var(--muted); }
-dd { margin: 0; }
-.stat { display: grid; grid-template-columns: 36px 1fr 28px; gap: 6px; align-items: center; font-size: 13px; margin-top: 4px; }
-.stat .bar { margin: 0; height: 6px; }
-#log { list-style: none; padding: 0; margin: 12px 0 0; max-height: 360px; overflow-y: auto; font-size: 14px; }
-.echo { color: var(--muted); font-size: 12px; white-space: nowrap; }
-#log li { padding: 4px 0; border-bottom: 1px dashed var(--line); display: grid; grid-template-columns: 72px 1fr; gap: 8px; }
-#log .ym { color: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: 12px; }
-#map { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
-#map span { aspect-ratio: 1; border-radius: 2px; background: var(--line); font: 600 11px "IBM Plex Mono", monospace; display: grid; place-items: center; color: var(--card); }
-.side dl { margin-top: 12px; }
-dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); max-width: 520px; width: calc(100% - 32px); padding: 20px; }
-dialog::backdrop { background: rgb(0 0 0 / .45); }
-dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
-.kicker { color: var(--muted); font-size: 13px; }
-.src { border-left: 4px solid var(--good); padding: 4px 8px; font: 12px "IBM Plex Mono", monospace; color: var(--muted); margin: 12px 0; }
-.choice { display: block; width: 100%; text-align: left; margin-top: 8px; padding: 8px 12px; }
-.choice small { color: var(--muted); display: block; }
-.choice.dflt { border-color: var(--accent); }
-/* 시작 플로우 오버레이 */
-.overlay { position: fixed; inset: 0; background: rgb(0 0 0 / .55); display: grid; place-items: center; z-index: 10; padding: 16px; }
-.overlay[hidden] { display: none; }
-.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 28px; max-width: 640px; width: 100%; text-align: center; max-height: calc(100vh - 64px); overflow-y: auto; }
-.panel h1 { font: 600 26px "Hahmlet", serif; margin: 6px 0 12px; }
-.panel h3 { font: 600 22px "Hahmlet", serif; margin: 6px 0 12px; }
-.panel .row { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; align-items: center; }
-#heart { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); resize: vertical; margin-bottom: 12px; }
-.draw-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin: 20px 0; }
-.dcard { border: 1px solid var(--line); border-radius: 6px; padding: 12px 6px; background: var(--paper); opacity: 0; transform: translateY(8px); animation: flip .45s ease forwards; }
-.dcard .k { font-size: 12px; color: var(--muted); }
-.dcard .v { font: 600 17px "Hahmlet", serif; margin-top: 4px; }
-@keyframes flip { to { opacity: 1; transform: none; } }
-.big { font-size: 17px; padding: 8px 22px; }
-.chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.chips button { font-size: 13px; padding: 2px 8px; }
-#train .stat { grid-template-columns: 52px 1fr 64px; }
-#train .mono { font-size: 11px; white-space: nowrap; text-align: right; }
-.report > section { margin-top: 12px; }
-.panel .row[hidden] { display: none; }
-.primary { background: var(--accent); color: var(--card); border-color: var(--accent); }
-/* 첫 화면 배경: 해 질 녘 부대 (일러스트라 테마와 무관하게 고정 색) */
-#scenery { position: fixed; inset: 0; z-index: 9; background: #141a12; }
-#scenery[hidden] { display: none; }
-#scenery svg { width: 100%; height: 100%; display: block; }
-.overlay.on-scene { background: linear-gradient(to bottom, rgb(0 0 0 / .05), rgb(0 0 0 / .35)); }
-.on-scene .panel { background: color-mix(in srgb, var(--card) 88%, transparent); backdrop-filter: blur(6px); box-shadow: 0 20px 60px rgb(0 0 0 / .45); }
-#searchlight { transform-origin: 300px 560px; animation: sweep 9s ease-in-out infinite alternate; }
-@keyframes sweep { from { transform: rotate(-28deg); } to { transform: rotate(22deg); } }
-.twinkle { animation: tw 3s ease-in-out infinite alternate; }
-@keyframes tw { from { opacity: .25; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { #searchlight, .twinkle { animation: none; } }
-.dcard.q, .dcard.spin { opacity: 1; transform: none; animation: none; }
-.dcard.q .v { color: var(--muted); }
-.dcard.spin .v { color: var(--muted); filter: blur(.5px); }
-.dcard.done { border-color: var(--accent); animation: land .35s ease; opacity: 1; transform: none; }
-@keyframes land { 0% { transform: scale(1.08); } 100% { transform: none; } }
-/* 전역 기록: 주마등 */
-#reelOverlay { background: #0d0f0b; }
-.reel { color: #e6e6dc; text-align: center; max-width: 640px; width: 100%; cursor: pointer; }
-.reel .ym { font: 600 14px "IBM Plex Mono", monospace; color: #9fb56b; letter-spacing: .1em; }
-.reel .txt { font: 600 26px/1.45 "Hahmlet", serif; margin: 14px 0 28px; min-height: 3em; }
-.reel .fade { animation: reelIn 1.6s ease both; }
-@keyframes reelIn { 0% { opacity: 0; filter: blur(4px); transform: scale(.97); } 25%, 80% { opacity: 1; filter: none; transform: none; } 100% { opacity: .4; } }
-@media (prefers-reduced-motion: reduce) { .reel .fade { animation: none; } }
-.reel .dots { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
-.reel .dots i { width: 6px; height: 6px; border-radius: 50%; background: #3a3e33; }
-.reel .dots i.on { background: #9fb56b; }
-.reel button { margin-top: 24px; background: transparent; color: #a2a796; border-color: #3a3e33; }
-/* 전역 기록: 보고서 */
-.report { max-width: 760px; text-align: left; position: relative; }
-.report .stamp { position: absolute; top: 20px; right: 24px; border: 3px solid var(--bad); color: var(--bad); border-radius: 50%; width: 84px; height: 84px; display: grid; place-items: center; font: 600 18px "Hahmlet", serif; transform: rotate(-14deg); opacity: .85; text-align: center; line-height: 1.1; }
-.report .hero { font: 600 40px "IBM Plex Mono", monospace; color: var(--accent); }
-.chips { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; vertical-align: 1px; }
-.chips i { font: 500 11px "IBM Plex Mono", monospace; font-style: normal; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); white-space: nowrap; }
-.chips .up { color: var(--good); }
-.chips .dn { color: var(--bad); }
-.report .quote { margin: 12px 0 6px; padding: 10px 14px; border-left: 3px solid var(--accent); font-size: 17px; line-height: 1.55; text-align: left; }
-.report .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
-@media (max-width: 560px) { .report .grid { grid-template-columns: minmax(0, 1fr); } .report .stamp { position: static; margin: 0 0 8px auto; } }
-.report section { padding: 10px 12px; }
-.report ol { margin: 0; padding-left: 0; list-style: none; font-size: 14px; max-height: 220px; overflow-y: auto; }
-.report ol li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; padding: 3px 0; border-bottom: 1px dashed var(--line); }
-.report ol .ym { color: var(--muted); font: 12px "IBM Plex Mono", monospace; }
-#moodChart { width: 100%; height: auto; display: block; }
-.report { min-width: 0; }
-#moodChart text { font: 11px "IBM Plex Sans KR", sans-serif; fill: var(--muted); }
-@media print { header, main, #reelOverlay { display: none !important; } .overlay { position: static; background: none; } .panel { max-height: none; border: 0; } .report .row { display: none; } }
-</style>
+<link rel="stylesheet" href="styles/app.css">
 </head>
 <body>
 <header>
   <div class="top">
     <span class="dday" id="dday">D-?</span>
-    <span class="sub" id="subline"></span>
+    <div class="hd-sub"><span id="subline"></span></div>
     <div class="ctl" role="group" aria-label="시간 조작">
       <button data-speed="0" aria-label="멈춤">❚❚</button>
       <button data-speed="1">1×</button><button data-speed="2">2×</button>
       <button data-speed="4">4×</button><button data-speed="8">8×</button>
-      <button id="skip" title="다음 결정이나 수첩이 나올 때까지 빨리 감기">다음 결정까지 ▸▸</button>
+      <button id="skip" title="다음 결정이나 수첩이 나올 때까지 빨리 감기">다음 결정까지 »</button>
       <button id="auto" aria-pressed="false">자동 결정</button>
       <select id="len" aria-label="한 판 길이"><option value="10">10분</option><option value="15">15분</option><option value="30">30분</option></select>
     </div>
   </div>
-  <div class="bar" aria-label="복무 진행"><i id="prog"></i></div>
+  <div class="progress" aria-label="복무 진행"><div class="bar"><i id="prog"></i></div><div class="cap"><span id="progTxt"></span><span id="progEnd"></span></div></div>
 </header>
-<main>
-  <section aria-label="신원 카드">
-    <h2>신원 카드</h2>
-    <div class="id-row"><canvas id="avatar" width="16" height="16"></canvas><div><strong id="rankName"></strong><div class="sub mono" id="seedline"></div></div></div>
-    <dl id="idcard"></dl>
-    <div id="stats" style="margin-top:12px"></div>
-    <h2 style="margin-top:16px">훈련 초점 <span class="sub">(매달 반영 · 평가 포상 확률↑)</span></h2>
-    <div class="chips" id="focus" role="group" aria-label="훈련 초점"></div>
-    <div id="train"></div>
-  </section>
-  <section aria-label="복무 기록">
-    <canvas id="scene" width="128" height="72"></canvas>
-    <ul id="log" aria-live="polite"></ul>
-  </section>
-  <section class="side" aria-label="복무 지도">
-    <h2>복무 지도 <span class="sub">(한 칸 = 1개월)</span></h2>
-    <div id="map"></div>
-    <dl id="sideinfo"></dl>
-    <h2 style="margin-top:16px">주변 인물</h2>
-    <dl id="people"></dl>
-  </section>
+<main data-tab="log">
+  <div class="col">
+    <section aria-label="신원 카드" data-pane="id">
+      <h2>신원 카드</h2>
+      <div class="id-row"><canvas id="avatar" width="16" height="16"></canvas><div><strong id="rankName"></strong><div class="cap mono" id="seedline"></div></div></div>
+      <dl id="idcard"></dl>
+      <div id="statsDesk"><h2 style="margin-top:14px">상태</h2><div id="stats"></div></div>
+      <h2 style="margin-top:16px">훈련 <span class="sub">(매달 반영 · 평가 포상 확률↑)</span></h2>
+      <div id="train"></div>
+    </section>
+  </div>
+  <div class="col">
+    <section class="flush" aria-label="복무 기록" data-pane="log">
+      <canvas id="scene" width="128" height="72"></canvas>
+      <div class="focusbar"><span class="lbl">이번 달 초점</span><div class="chips" id="focus" role="group" aria-label="훈련 초점"></div></div>
+      <div class="statsM" id="statsM"></div>
+      <div class="chipsM" id="chipsM"></div>
+      <div class="loghead"><b>복무 기록</b></div>
+      <ul id="log" aria-live="polite"></ul>
+    </section>
+  </div>
+  <div class="col">
+    <section aria-label="주변 인물" data-pane="people">
+      <h2>주변 인물</h2>
+      <dl id="people"></dl>
+    </section>
+    <section class="side" aria-label="복무 지도" data-pane="map">
+      <h2>복무 지도 <span class="sub">(한 칸 = 1개월)</span></h2>
+      <div id="map"></div>
+      <div class="cap" id="mapLegend">진 진급 · 휴 휴가 · 훈 훈련 · ! 사건 (진한 칸일수록 괜찮았던 달)</div>
+      <dl id="sideinfo" class="side-dl"></dl>
+    </section>
+  </div>
 </main>
+<nav class="tabbar" id="tabbar" aria-label="화면 전환">
+  <button data-tab="log" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14v16H5zM9 9h6M9 13h6"/></svg>기록</button>
+  <button data-tab="id" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/></svg>신원</button>
+  <button data-tab="people" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 19c1-3.5 3.5-5 6-5s5 1.5 6 5M16 14c2.5 0 4 1.5 5 4"/></svg>동기</button>
+  <button data-tab="map" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>지도</button>
+</nav>
 <dialog id="modal"></dialog>
 
 <!-- 첫 화면 배경 (해 질 녘 부대) -->
@@ -206,37 +108,58 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
   </svg>
 </div>
 
-<!-- 시작: 입대하기 → 그 자리에서 운명 추첨 -->
-<div class="overlay on-scene" id="startOverlay">
+<!-- 시작: 입영 통지서 → 추첨 결과(배치 통지서) -->
+<div class="overlay" id="startOverlay">
   <div class="panel">
-    <div class="kicker">군 생활 시뮬레이터 · 프로토타입</div>
-    <h1>스무 살, 당신의 군 생활이<br>시작됩니다</h1>
-    <p class="sub" id="startSub">입대한 해부터 신체등급, 군종, 특기까지 — 모든 건 추첨으로 정해집니다.<br>1995년 GOP와 2024년 공군은 월급도, 휴대폰도, 선임도 다릅니다.</p>
-    <div class="draw-cards" id="drawCards"></div>
-    <div class="row" id="startRow"><button class="big primary" id="btnStart">입대하기</button></div>
+    <div class="hero">
+      <div class="hero-kick">NOTICE OF ENLISTMENT</div>
+      <h1>스무 살,<br>입영 통지서를 받은 날부터</h1>
+    </div>
+    <div class="doc" id="noticeDoc">
+      <div class="doc-head"><span>입 영 통 지 서</span><span class="mono">제 ○○○○-○○○○ 호</span></div>
+      <div class="doc-rows">
+        <span>입영일</span><span><span class="redact">추첨전추첨전</span></span>
+        <span>신분 · 군종</span><span><span class="redact">추첨전추첨전추첨</span></span>
+        <span>입영부대</span><span><span class="redact">추첨전추첨전추첨전추첨</span></span>
+      </div>
+      <div class="stamp sq">입영<br>대상</div>
+      <p class="note" id="startSub">입대한 해부터 신체등급, 군종, 특기까지 모든 건 추첨으로 정해져요. 1995년 GOP와 2024년 공군은 월급도, 휴대폰도, 선임도 달라요.</p>
+    </div>
+    <div class="draw-extra" id="drawBox" hidden>
+      <div id="drawCards"></div>
+      <div class="era-card" id="eraCard" hidden></div>
+      <div class="doc" id="placeDoc" hidden></div>
+    </div>
+    <div class="card-sheet" id="lenBox">
+      <div id="lenBlock">
+        <div style="display:flex;align-items:center;justify-content:space-between"><b>한 판 길이</b><span class="cap">복무 1개월 ≈ 20~40초</span></div>
+        <div class="seg" id="lenSeg" role="group" aria-label="한 판 길이"><button class="btn-t" data-min="10">10분</button><button class="btn-t" data-min="15">15분</button><button class="btn-t" data-min="30">30분</button></div>
+      </div>
+      <div class="row" id="startRow"><button class="big btn-p primary" id="btnStart">통지서 받기</button></div>
+    </div>
   </div>
 </div>
 
 <!-- 입소 첫날 밤: 마음속 이야기 (heart.js) -->
-<div class="overlay" id="heartOverlay" hidden>
+<div class="overlay dark-ov" id="heartOverlay" hidden>
   <div class="panel">
     <div class="kicker" id="heartKicker">입소 첫날 밤</div>
     <h3>마음속에 담아둔 이야기</h3>
-    <p class="sub">불 꺼진 생활관, 수첩에 몇 줄 적어 봅니다. 적은 이야기에 따라 앞으로 마주할 선택이 달라집니다.</p>
-    <textarea id="heart" rows="4" maxlength="400" aria-label="마음속에 담아둔 이야기" placeholder="예) 여자친구가 기다려 줄지 걱정이다. 전역할 때까지 돈을 모으고 싶다."></textarea>
-    <div class="row"><button class="big primary" id="btnHeart">수첩을 덮는다</button></div>
+    <p class="sub">불 꺼진 생활관, 수첩에 몇 줄 적어 봐요. 적은 이야기에 따라 앞으로 마주할 선택이 달라져요.</p>
+    <div class="pad"><textarea id="heart" rows="4" maxlength="400" aria-label="마음속에 담아둔 이야기" placeholder="예) 여자친구가 기다려 줄지 걱정이다. 전역할 때까지 돈을 모으고 싶다."></textarea></div>
+    <div class="row"><button class="big btn-p primary" id="btnHeart">수첩 덮기</button></div>
   </div>
 </div>
 
 <!-- 수첩: 진급·전역 전날 시간이 멈추고 질문 하나 (전역 기록에서 돌려받는다) -->
-<div class="overlay" id="noteOverlay" hidden>
+<div class="overlay dark-ov" id="noteOverlay" hidden>
   <div class="panel">
     <div class="kicker" id="noteKicker"></div>
-    <h3 id="noteQ"></h3>
-    <p class="sub" id="noteSub"></p>
-    <textarea id="note" rows="3" maxlength="300" aria-label="수첩에 적을 말"></textarea>
-    <div class="row"><button class="big primary" id="btnNote">수첩을 덮는다</button></div>
-    <p class="sub" style="margin:6px 0 0;font-size:12px">비워 둬도 됩니다 · Ctrl/⌘+Enter</p>
+    <h3>시간이 잠깐 멈췄다.<br>수첩을 펴 본다.</h3>
+    <div class="pad"><div class="q" id="noteQ"></div><textarea id="note" rows="3" maxlength="300" aria-label="수첩에 적을 말"></textarea></div>
+    <p class="sub" id="noteSub" style="margin-top:10px"></p>
+    <div class="row"><button class="big btn-p primary" id="btnNote">적고 다시 흘려보내기</button></div>
+    <p class="sub" style="margin:6px 0 0;font-size:12px">비워 둬도 돼요 · Ctrl/⌘+Enter</p>
   </div>
 </div>
 
@@ -244,9 +167,9 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
 <div class="overlay" id="hobbyOverlay" hidden>
   <div class="panel">
     <div class="kicker">자대 배치 · 여가 시간</div>
-    <h3>취미를 골라보세요</h3>
-    <p class="sub">일과 후 시간을 어떻게 쓸지 정합니다. 입대 전 마음에 맞는 것들만 떠올랐습니다. 한 번 고르면 이 판에서는 바꿀 수 없습니다.</p>
-    <div id="hobbyList" style="text-align:left;max-height:40vh;overflow-y:auto"></div>
+    <h3>취미를 골라 보세요</h3>
+    <p class="sub">일과 후 시간을 어떻게 쓸지 정해요. 입대 전 마음에 맞는 것들만 떠올랐어요. 한 번 고르면 이 판에서는 바꿀 수 없어요.</p>
+    <div id="hobbyList"></div>
   </div>
 </div>
 
@@ -256,7 +179,7 @@ dialog h3 { margin: 4px 0 8px; font: 600 20px "Hahmlet", serif; }
     <div class="ym" id="reelYm"></div>
     <div class="txt" id="reelTxt"></div>
     <div class="dots" id="reelDots"></div>
-    <button id="btnSkipReel">건너뛰기 ▸</button>
+    <button id="btnSkipReel" class="btn-t">건너뛰기 »</button>
   </div>
 </div>
 <div class="overlay" id="reportOverlay" hidden>
@@ -320,8 +243,10 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let spinTimer = null;
 
 function blankCards() {
-  $('drawCards').innerHTML = DRAW_KEYS.map((k) => `<div class="dcard q"><div class="k">${k}</div><div class="v">?</div></div>`).join('');
+  $('drawCards').innerHTML = DRAW_KEYS.map(cardHtml).join('');
 }
+// 카드 한 장: 이름 · 값 · (근거 칩). 입대 연도가 가장 큰 변수라 강조한다
+const cardHtml = (k, i, state = 'q', v = '?', chip = '') => `<div class="dcard ${state}${k === '입대 연도' ? ' key' : ''}"><div class="k">${k}</div><div class="v">${v}</div>${chip ? `<span class="chip g">${chip}</span>` : '<span></span>'}</div>`;
 
 // 카드마다 후보를 빠르게 넘기다가 순서대로 실제 추첨값에 멈춘다
 function spinDraw(fixedSeed) {
@@ -337,29 +262,34 @@ function spinDraw(fixedSeed) {
   const final = verdict.serve ? [`${year}년`, gradeTxt, BRANCH_L[S.branch], L(ROUTE_L, S.route), mosLabel()] : [`${year}년`, gradeTxt, '—', '—', '—'];
   const pool = [Array.from({ length: y1 - y0 + 1 }, (_, i) => `${y0 + i}년`), keysOf(w.grade).map((g) => g + '급'), Object.values(BRANCH_L),
     keysOf(w.route[S.status]).map((k) => L(ROUTE_L, k)), Object.values(rules.soldierMos[S.branch]).filter((m) => !m.since || m.since <= `${year}-01`).map((m) => m.name)]; // 주특기 이름 (그 해에 있던 것만)
-  $('startRow').hidden = true;
-  $('drawCards').innerHTML = DRAW_KEYS.map((k) => `<div class="dcard spin"><div class="k">${k}</div><div class="v">?</div></div>`).join('');
+  $('startRow').hidden = true; $('lenBlock').hidden = true;
+  $('noticeDoc').hidden = true; $('drawBox').hidden = false; $('eraCard').hidden = true; $('placeDoc').hidden = true;
+  $('drawCards').innerHTML = DRAW_KEYS.map((k) => cardHtml(k, 0, 'spin')).join('');
   const cards = [...$('drawCards').children];
   const t0 = performance.now(), STOP = reduceMotion ? 0 : 700, GAP = reduceMotion ? 0 : 450;
   const frame = () => {
     const el = performance.now() - t0;
     cards.forEach((c, i) => {
       if (c.classList.contains('done')) return;
-      if (el >= STOP + i * GAP) { c.className = 'dcard done'; c.querySelector('.v').textContent = final[i]; }
+      if (el >= STOP + i * GAP) { c.classList.replace('spin', 'done'); c.querySelector('.v').textContent = final[i]; if (i === 0 && verdict.serve) c.lastElementChild.outerHTML = `<span class="chip g">1 / ${pool[0].length}</span>`; }
       else c.querySelector('.v').textContent = pool[i][Math.floor(Math.random() * pool[i].length)];
     });
     if (cards.every((c) => c.classList.contains('done'))) {
       clearInterval(spinTimer);
       if (!verdict.serve) { // 현역이 아닌 판정 — 이 인생은 군대에 가지 않는다 (같은 해 판정자 중 비율과 함께)
-        $('startSub').innerHTML = `<strong>${verdict.title}</strong> — 같은 해 판정받은 사람 중 ${verdict.pct}%<br>${verdict.text}`;
+        $('eraCard').hidden = false;
+        $('eraCard').innerHTML = `<strong>${verdict.title}</strong> — 같은 해 판정받은 사람 중 ${verdict.pct}%<br>${verdict.text}`;
         $('btnStart').textContent = '다시 태어나기';
         $('startRow').hidden = false;
         return;
       }
       autoEnlist(S, rules, year); // 추첨 즉시 확정 — 다시 뽑기·연기 없음
-      $('startSub').innerHTML = (S.era ? `<strong>${S.era.label}</strong> — ${S.era.blurb}<br>` : '') + S.log.slice(1).map((l) => l.text).join('<br>');
+      $('eraCard').hidden = !S.era;
+      if (S.era) $('eraCard').innerHTML = `<strong>${S.era.label}</strong> ${S.era.blurb}`;
+      $('placeDoc').hidden = false;
+      $('placeDoc').innerHTML = `<div class="doc-head"><span>배 치 통 지 서</span><span class="mono">${S.training?.name ?? ''}</span></div><div style="margin-top:8px">${S.log.slice(1).map((l) => `<div class="logline">${l.text}</div>`).join('')}</div><div class="stamp">입영<br>확인</div>`;
       // 운명을 읽을 시간을 준다 — 입소는 내가 누른다
-      $('startRow').innerHTML = '<button class="big primary" id="btnEnter">입소한다 ▸</button>';
+      $('startRow').innerHTML = '<button class="big btn-p primary" id="btnEnter">입소하기</button>';
       $('startRow').hidden = false;
       $('btnEnter').onclick = start;
       $('btnEnter').focus();
@@ -396,7 +326,7 @@ function openNote(key) {
   noteOpen = key;
   $('noteKicker').textContent = `${n.kicker} · ${fmtYm(S.ym)}`;
   $('noteQ').textContent = n.q;
-  $('noteSub').textContent = key === 'end' && S.heart?.text ? `입소 첫날 밤 수첩 — “${S.heart.text}”` : '시간이 잠시 멈췄습니다. 여기 적은 말은 전역하는 날 돌려받습니다.';
+  $('noteSub').textContent = key === 'end' && S.heart?.text ? `입소 첫날 밤 수첩 — “${S.heart.text}”` : '적은 글은 복무 기록에 인용구로 남고, 전역 기록에 다시 나와요.';
   $('note').value = '';
   $('note').placeholder = n.ph;
   $('noteOverlay').hidden = false;
@@ -440,7 +370,7 @@ function resume(v) {
 }
 { const v = !q.get('seed') && !auto && loadSave();
   if (v) {
-    $('startRow').insertAdjacentHTML('afterbegin', `<button class="big" id="btnResume">이어하기 · ${rankName(rules, v.S.status, v.S.rank)} · ${fmtYm(v.S.ym)}</button>`);
+    $('startRow').insertAdjacentHTML('beforeend', `<button class="btn" id="btnResume"><span>이어하기</span><span class="mono">${rankName(rules, v.S.status, v.S.rank)} · ${fmtYm(v.S.ym)}</span></button>`);
     $('btnResume').onclick = () => resume(v);
   } }
 blankCards();
@@ -455,8 +385,10 @@ function render() {
   const rank = rankName(rules, S.status, S.rank);
   const END = { court: '복무 중단', medical: '의병 전역', unfit: '부적합 전역', family: '의가사 전역', shortened: '단축 전역' };
   $('dday').textContent = S.ending ? END[S.ending] : S.phase === 'end' ? '전역' : `D-${dleft}`;
-  $('subline').textContent = `${rank} · ${fmtYm(S.ym)} · ${PHASE[S.phase]} · 1개월 ≈ ${Math.round(msPerMonth() / 1000 / (speed || 1))}초`;
+  $('subline').innerHTML = `${rank} · ${fmtYm(S.ym)} · ${PHASE[S.phase]}<span class="cap">1개월 ≈ ${Math.round(msPerMonth() / 1000 / (speed || 1))}초</span>`;
   $('prog').style.width = pct + '%';
+  $('progTxt').textContent = `복무 진행 ${Math.round(pct)}%`;
+  $('progEnd').textContent = `전역 예정 ${S.dates.discharge}`;
   $('rankName').textContent = rank;
   $('seedline').textContent = `seed ${seed}`;
   const tc = S.training;
@@ -470,8 +402,10 @@ function render() {
     .map(([k, l]) => `<button data-focus="${k ?? ''}">${l}</button>`).join('');
   for (const c of $('focus').children) c.setAttribute('aria-pressed', String((c.dataset.focus || null) === S.focus));
   $('train').innerHTML = Object.entries(TRAINING).map(([k, v]) => `<div class="stat" title="평가 포상 확률 ${Math.round(rewardChance(S, k) * 100)}%"><span>${v.label}</span><div class="bar"><i style="width:${S.train[k]}%"></i></div><span class="mono">${Math.round(S.train[k])} · ${Math.round(rewardChance(S, k) * 100)}%</span></div>`).join('');
-  $('stats').innerHTML = [['체력', 'fit'], ['멘탈', 'mind'], ['숙련', 'skill'], ['관계', 'rel']]
-    .map(([n, k]) => `<div class="stat"><span>${n}</span><div class="bar"><i style="width:${S.st[k]}%"></i></div><span class="mono">${Math.round(S.st[k])}</span></div>`).join('');
+  const statsHtml = [['체력', 'fit'], ['멘탈', 'mind'], ['숙련', 'skill'], ['관계', 'rel']]
+    .map(([n, k]) => `<div class="stat"><span>${n}</span><div class="bar${S.st[k] < 25 ? ' d' : S.st[k] < 50 ? ' w' : ''}"><i style="width:${S.st[k]}%"></i></div><span class="mono">${Math.round(S.st[k])}</span></div>`).join('');
+  $('stats').innerHTML = $('statsM').innerHTML = statsHtml; // 모바일은 기록 탭 안에 2×2로, 데스크톱은 신원 카드 안에
+  $('chipsM').innerHTML = `<span class="chip">휴가 잔여 ${S.leave.left}일</span><span class="chip">잔고 ${won(S.money.cash)}</span>`;
   const nextPromo = S.dates.promotions.find((p) => p.rank > S.rank);
   $('sideinfo').innerHTML = [['휴가 잔여', S.leave.left + '일'], ['다음 진급', nextPromo ? nextPromo.date : '—'], ['잔고', won(S.money.cash)], ['적금', won(S.money.savings)]]
     .map(([k, v]) => `<dt>${k}</dt><dd class="mono">${v}</dd>`).join('')
@@ -479,8 +413,8 @@ function render() {
     + (S.body ? `<dt>몸</dt><dd><span class="mono">${S.body.kg}kg (${gain(S.body) >= 0 ? '+' : ''}${gain(S.body)})</span> · ${shape(S.body)} · 근육 <span class="mono">${Math.round(S.body.muscle)}</span></dd><dt>습관</dt><dd>${HABITS[S.body.habit]?.label ?? '—'}</dd>` : '')
     + (S.flags.injured?.until > S.ym ? `<dt>부상</dt><dd>${S.flags.injured.type}</dd>` : '');
   const roleName = ROLE_NAME;
-  $('people').innerHTML = S.phase === 'pre' || S.phase === 'train' ? '<dd class="sub" style="grid-column:1/-1">자대에 가면 만나게 됩니다.</dd>' : S.env.people.filter((p) => p.gone || here(S, p.role)).map((p) => `<dt>${roleName[p.role]}</dt><dd>${p.name ? `<strong>${p.name}</strong> · ` : ''}${p.gone ? '<span class="sub">전역</span>' : p.label} <span class="mono sub">${Math.round(p.rel)}</span></dd>`).join('');
-  $('map').innerHTML = monthCells.map((c) => `<span title="${fmtYm(c.ym)}" style="background:color-mix(in srgb, var(--accent) ${c.mood}%, var(--line))">${c.icon}</span>`).join('');
+  $('people').innerHTML = S.phase === 'pre' || S.phase === 'train' ? '<dd class="sub" style="grid-column:1/-1">자대에 가면 만나게 돼요.</dd>' : S.env.people.filter((p) => p.gone || here(S, p.role)).map((p) => `<dt>${roleName[p.role]}</dt><dd>${p.name ? `<strong>${p.name}</strong> · ` : ''}${p.gone ? '<span class="sub">전역</span>' : p.label} <span class="mono sub">${Math.round(p.rel)}</span></dd>`).join('');
+  $('map').innerHTML = monthCells.map((c) => `<span title="${fmtYm(c.ym)}" style="background:color-mix(in srgb, var(--gs) ${c.mood}%, var(--bg-a));${c.mood < 60 ? 'color:var(--t)' : ''}">${c.icon}</span>`).join('');
   $('log').innerHTML = S.log.slice().reverse().map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text.replace(/([+ ])(\d{4,})원/g, (m, a, n) => a + Number(n).toLocaleString('ko-KR') + '원')}${l.echo ? ` <small class="echo">← ${fmtYm(l.echo)}</small>` : ''}${chips(l)}</span></li>`).join(''); // echo: 되부르기 원래 흔적의 연월
   for (const b of document.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String(+b.dataset.speed === speed));
   $('auto').setAttribute('aria-pressed', String(auto));
@@ -492,7 +426,7 @@ const FX_L = { fit: '체력', mind: '멘탈', skill: '숙련', rel: '관계' };
 function chips(l) {
   const a = [...Object.entries(l.fx ?? {}).filter(([k]) => FX_L[k]).map(([k, v]) => [FX_L[k], v]),
     ...Object.entries(l.rel ?? {}).map(([r, v]) => { const p = S.env.people.find((x) => x.role === r); return [p?.name ? `${ROLE_NAME[r]} ${p.name}` : ROLE_NAME[r] ?? r, v]; })];
-  return a.length ? ` <span class="chips">${a.map(([k, v]) => `<i class="${v > 0 ? 'up' : 'dn'}">${k} ${v > 0 ? '+' : '−'}${Math.abs(Math.round(v))}</i>`).join('')}</span>` : '';
+  return a.length ? `<span class="deltas">${a.map(([k, v]) => `<i class="${v > 0 ? 'up' : 'dn'}">${k} ${v > 0 ? '+' : '−'}${Math.abs(Math.round(v))}</i>`).join('')}</span>` : '';
 }
 
 // 한 달이 끝난 뒤 복무 지도 칸 기록 (입영월~전역월만)
@@ -588,38 +522,51 @@ function showReport() {
   shareText = [`${R.era ? `[${R.era.label}] ` : ''}${R.enlist.slice(0, 4)}년 입대 · ${BRANCH_L[S.branch]} ${mosLabel()} · ${postLabel()}`,
     `${R.ending} · ${R.days}일 · ${R.rank}`, `“${headline(S.log)}”`,
     `같은 날 입대한 ${CS.n}명 중 포상휴가 상위 ${CS.rewardTop}%`, `${location.origin}${location.pathname}?seed=${seed}`].join('\n');
+  const notes = [...(S.heart?.text ? [{ ym: S.dates.enlist.slice(0, 7), q: '입소 첫날 밤', text: S.heart.text }] : []), ...(S.notes ?? []).filter((n) => n.text)];
+  const tone = (c) => (c.early ? 'r' : 'g');
   $('report').innerHTML = `
-    <div class="stamp">${R.early ? '복무<br>종료' : '전역'}</div>
-    <div class="kicker">전역 기록 · seed <span class="mono">${seed}</span></div>
-    <h3>${R.ending}</h3>${R.era ? `<p class="sub"><strong>${R.era.label}</strong> — ${R.era.blurb}</p>` : ''}
-    <p class="sub">${R.enlist} ~ ${R.end} · <strong class="mono">${R.days}일</strong> (${R.months}개월)${R.rank ? ` · 최종 계급 <strong>${R.rank}</strong>` : ''}</p>
-    <blockquote class="quote">“${esc(headline(S.log))}”</blockquote>
-    <p class="sub">같은 날 입대한 ${CS.n}명 중 포상휴가 <strong>상위 ${CS.rewardTop}%</strong> · 버틴 기분 <strong>상위 ${CS.moodTop}%</strong> · 나와 같은 군종·경로·특기를 뽑을 확률 <strong class="mono">${pct}%</strong></p>
-    <section><h2>같은 날 입대한 사람들 <span class="sub">(${R.enlist} 입영)</span></h2>
-      <p class="sub" style="margin:0 0 6px">같은 날 들어간 ${CS.n}명 중 징계 받은 사람 <strong>${CS.punished}명</strong>, 만기 전에 나간 사람 <strong>${CS.early}명</strong>. 그중 세 명은 이렇게 살았습니다.</p>
-      <dl>${CS.people.slice(0, 3).map((c) => `<dt><strong>${c.name}</strong></dt><dd>${BRANCH_L[c.branch]} · ${mosName(rules, c.branch, c.mos, R.enlist)} · ${rules.env.post[c.branch][c.post].label}<br><span class="sub">${esc(c.line)}</span><br>${c.early ? `<strong>${c.ending}</strong>` : `${c.rank} ${c.ending}`}</dd>`).join('')}</dl></section>
-    ${(S.heart?.text || S.notes?.some((n) => n.text)) ? `<section><h2>수첩</h2><dl>${[...(S.heart?.text ? [{ ym: S.dates.enlist.slice(0, 7), q: '입소 첫날 밤', text: S.heart.text }] : []), ...(S.notes ?? []).filter((n) => n.text)].map((n) => `<dt>${fmtYm(n.ym)}</dt><dd><span class="sub">${esc(n.q)}</span><br>“${esc(n.text)}”</dd>`).join('')}</dl></section>` : ''}
-    <div class="grid">
-      <section><h2>신원</h2>${dl([['군종', BRANCH_L[S.branch] || S.branch], ['경로', L(ROUTE_L, S.route)], ['특기', mosLabel()], ['근무지', postLabel()], ['훈련소', tc ? tc.name : '—'], ['입영 나이', `${R.age}살${R.deferred ? ` (${R.deferred}번 연기)` : ''}`]])}</section>
-      <section><h2>돈과 휴가</h2>${dl([['받은 월급', `<span class="mono">${won(R.paid)}</span>${R.paidNow !== R.paid ? `<br><span class="sub">${R.nowYear}년이었다면 <span class="mono">${won(R.paidNow)}</span></span>` : ''}`], ['적금 만기', `<span class="mono">${won(R.payout)}</span>`], ['전역 때 잔고', `<span class="mono">${won(R.cash)}</span>`], ['남은 휴가', `${R.leaveLeft}일`], ['중대 결정', `${R.decisions}번`], ['징계', R.discipline.length ? R.discipline.map((d) => `${PUN[d.kind]}(${d.ym})`).join(', ') : '없음']])}</section>
+    <div class="hero-dark">
+      <div class="kicker">${R.end} · ${R.ending} · seed <span class="mono">${seed}</span></div>
+      <h3>“${esc(headline(S.log))}”</h3>
+      ${R.era ? `<p><strong>${R.era.label}</strong> — ${R.era.blurb}</p>` : ''}
     </div>
-    <section><h2>월별 기분 <span class="sub">(체력·멘탈·관계 평균, 점선 = 50)</span></h2>${moodSvg(R.hist, R.lowest, R.highest)}
-      <p class="sub" style="margin:4px 0 0">가장 힘들었던 달 <strong>${fmtYm(R.lowest.ym)}</strong> · 가장 좋았던 달 <strong>${fmtYm(R.highest.ym)}</strong></p></section>
-    <div class="grid">
-      <section><h2>전역 때 상태</h2>${[['체력', 'fit'], ['멘탈', 'mind'], ['숙련', 'skill'], ['관계', 'rel']].map(([n, k]) => `<div class="stat"><span>${n}</span><div class="bar"><i style="width:${R.st[k]}%"></i></div><span class="mono">${Math.round(R.st[k])}</span></div>`).join('')}${R.body ? `<p class="sub" style="margin:6px 0 0">체중 <strong class="mono">${R.body.kg0}→${R.body.kg}kg</strong> · ${shape(R.body)} · 근육 <span class="mono">${Math.round(R.body.muscle)}</span> · 수도병원 ${R.hospital}번</p>` : ''}</section>
-      <section><h2>함께한 사람들</h2>${dl(R.people.map((p) => [roleName[p.role] || p.role, `${p.name ? `<strong>${p.name}</strong> · ` : ''}${p.label} <span class="mono sub">${p.rel}</span>`]))}</section>
+    <div class="body">
+      <div class="doc">
+        <div class="doc-head"><span>${R.early ? '복 무 기 록' : '전 역 증'}</span><span class="mono">${BRANCH_L[S.branch] || S.branch}${R.rank ? ` · ${R.rank}` : ''} · ${mosLabel()}</span></div>
+        <dl style="margin-top:12px">${[['복무기간', `<span class="mono">${R.enlist} ~ ${R.end}</span>`], ['복무일수', `<b class="mono">${R.days}일</b> (${R.months}개월)`], ['받은 월급', `<span class="mono">${won(R.paid)}</span>`], ['남은 휴가', `${R.leaveLeft}일`]].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+        <div class="stamp">${R.early ? '복무<br>종료' : '전역<br>확인'}</div>
+      </div>
+      <div>
+        <h4>같은 날 입영한 사람들 <span class="cap">(${R.enlist} 입영)</span></h4>
+        <p class="cap" style="margin:0 0 8px">같은 날 들어간 ${CS.n}명 중 징계 받은 사람 ${CS.punished}명, 만기 전에 나간 사람 ${CS.early}명이에요. 그중 세 명은 이렇게 살았어요.</p>
+        <div class="people">${CS.people.slice(0, 3).map((c) => `<div class="person"><b>${c.name} · ${BRANCH_L[c.branch]} ${mosName(rules, c.branch, c.mos, R.enlist)}</b><span class="chip ${tone(c)}">${c.early ? c.ending : `${c.rank} ${c.ending}`}</span><span class="line">${esc(c.line)}</span></div>`).join('')}</div>
+      </div>
+      ${notes.length ? `<div><h4>수첩에 적은 말</h4><div class="quote">${notes.map((n) => `<span class="cap">${fmtYm(n.ym)} · “${esc(n.q)}”</span>${esc(n.text)}`).join('<hr>')}</div></div>` : ''}
+      <div class="card" style="background:var(--bg-n);border-color:var(--bg-n)">
+        <div class="lbl">같은 날 입대한 ${CS.n}명 중</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px"><span><span class="mono" style="font-size:30px;font-weight:600;color:var(--gs)">상위 ${CS.rewardTop}%</span><div class="cap">포상휴가</div></span><span><span class="mono" style="font-size:30px;font-weight:600;color:var(--gs)">상위 ${CS.moodTop}%</span><div class="cap">버틴 기분</div></span></div>
+        <div class="cap" style="margin-top:6px">나와 같은 군종·경로·특기를 뽑을 확률 <span class="mono">${pct}%</span> · 최종 계급 ${R.rank || '—'}</div>
+      </div>
+      <div class="grid">
+        <section><h2>신원</h2>${dl([['군종', BRANCH_L[S.branch] || S.branch], ['경로', L(ROUTE_L, S.route)], ['특기', mosLabel()], ['근무지', postLabel()], ['훈련소', tc ? tc.name : '—'], ['입영 나이', `${R.age}살${R.deferred ? ` (${R.deferred}번 연기)` : ''}`]])}</section>
+        <section><h2>돈과 휴가</h2>${dl([['받은 월급', `<span class="mono">${won(R.paid)}</span>${R.paidNow !== R.paid ? `<br><span class="sub">${R.nowYear}년이었다면 <span class="mono">${won(R.paidNow)}</span></span>` : ''}`], ['적금 만기', `<span class="mono">${won(R.payout)}</span>`], ['전역 때 잔고', `<span class="mono">${won(R.cash)}</span>`], ['남은 휴가', `${R.leaveLeft}일`], ['중대 결정', `${R.decisions}번`], ['징계', R.discipline.length ? R.discipline.map((d) => `${PUN[d.kind]}(${d.ym})`).join(', ') : '없음']])}</section>
+        <section><h2>월별 기분 <span class="sub">(체력·멘탈·관계 평균, 점선 = 50)</span></h2>${moodSvg(R.hist, R.lowest, R.highest)}
+          <p class="cap" style="margin:4px 0 0">가장 힘들었던 달 <strong>${fmtYm(R.lowest.ym)}</strong> · 가장 좋았던 달 <strong>${fmtYm(R.highest.ym)}</strong></p></section>
+        <section><h2>전역 때 상태</h2>${[['체력', 'fit'], ['멘탈', 'mind'], ['숙련', 'skill'], ['관계', 'rel']].map(([n, k]) => `<div class="stat"><span>${n}</span><div class="bar"><i style="width:${R.st[k]}%"></i></div><span class="mono">${Math.round(R.st[k])}</span></div>`).join('')}${R.body ? `<p class="cap" style="margin:6px 0 0">체중 <strong class="mono">${R.body.kg0}→${R.body.kg}kg</strong> · ${shape(R.body)} · 근육 <span class="mono">${Math.round(R.body.muscle)}</span> · 수도병원 ${R.hospital}번</p>` : ''}</section>
+        <section><h2>함께한 사람들</h2>${dl(R.people.map((p) => [roleName[p.role] || p.role, `${p.name ? `<strong>${p.name}</strong> · ` : ''}${p.label} <span class="mono sub">${p.rel}</span>`]))}</section>
+        <section><h2>훈련 <span class="sub">(마지막 초점: ${R.focus ? TRAINING[R.focus].label : '고르게'} · 포상 ${R.rewards.length}번, 휴가 +${R.rewards.reduce((a, r) => a + r.days, 0)}일)</span></h2>
+          ${Object.entries(TRAINING).map(([k, v]) => `<div class="stat" style="grid-template-columns:64px 1fr 80px"><span>${v.label}</span><div class="bar"><i style="width:${R.train[k]}%"></i></div><span class="mono">${Math.round(R.train[k])} · 포상 ${R.rewards.filter((r) => r.kind === k).length}</span></div>`).join('')}</section>
+        <section><h2>연대기</h2><ol>${R.reel.map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text}</span></li>`).join('')}</ol></section>
+      </div>
     </div>
-    <section><h2>훈련 <span class="sub">(마지막 초점: ${R.focus ? TRAINING[R.focus].label : '고르게'} · 포상 ${R.rewards.length}번, 휴가 +${R.rewards.reduce((a, r) => a + r.days, 0)}일)</span></h2>
-      ${Object.entries(TRAINING).map(([k, v]) => `<div class="stat" style="grid-template-columns:64px 1fr 80px"><span>${v.label}</span><div class="bar"><i style="width:${R.train[k]}%"></i></div><span class="mono">${Math.round(R.train[k])} · 포상 ${R.rewards.filter((r) => r.kind === k).length}</span></div>`).join('')}</section>
-    <section><h2>연대기</h2><ol>${R.reel.map((l) => `<li><span class="ym">${l.ym}</span><span>${l.text}</span></li>`).join('')}</ol></section>
     <div class="row">
-      <button id="btnReplayReel">주마등 다시 보기</button>
-      <button id="btnShare">결과 복사</button>
-      <button onclick="print()">인쇄 / PDF</button>
-      <button class="big" onclick="location.href=location.pathname" style="background:var(--accent);color:var(--card);border-color:var(--accent)">새로운 인생</button>
+      <button class="btn big btn-p primary" onclick="location.href=location.pathname">새로운 인생 시작하기</button>
+      <button class="btn btn-s" id="btnShare">결과 복사</button>
+      <button class="btn btn-s" id="btnReplayReel">주마등 다시 보기</button>
+      <button class="btn btn-t" onclick="print()" style="grid-column:1/-1">인쇄 / PDF</button>
     </div>`;
   $('btnReplayReel').onclick = playReel;
-  $('btnShare').onclick = async (e) => { try { await navigator.clipboard.writeText(shareText); e.target.textContent = '복사했습니다'; } catch { prompt('복사해서 공유하세요', shareText); } };
+  $('btnShare').onclick = async (e) => { try { await navigator.clipboard.writeText(shareText); e.target.textContent = '복사했어요'; } catch { prompt('복사해서 공유해 주세요', shareText); } };
 }
 
 // ── 취미 선택 (자대 배치 직후, 한 번만) ──
@@ -629,7 +576,7 @@ function showHobbyPanel() {
   if (!list.length) return;
   hobbyOpen = true;
   $('hobbyList').innerHTML = list.map((h) =>
-    `<button class="choice" data-h="${h.id}">${h.name}<small>${hobbyHint(h)}${h.place ? ` · ${h.place}` : ''}</small></button>`).join('')
+    `<button class="opt" data-h="${h.id}"><span><b>${h.name}</b><small>${hobbyHint(h)}${h.place ? ` · ${h.place}` : ''}</small></span></button>`).join('')
     + Object.entries(all.filter((h) => w.some((p) => h.block?.[p])).reduce((g, h) => { const why = h.block[w.find((p) => h.block?.[p])]; (g[why] ??= []).push(h); return g; }, {}))
       .map(([why, hs]) => `<div class="src">${hs.map((h) => h.name).join(' · ')} — ${why}</div>`).join(''); // 못 하는 이유 (이유별로 묶어서)
   $('hobbyOverlay').hidden = false;
@@ -655,9 +602,9 @@ function openDecision() {
   const d = item.ref.build(S);
   pending = item;
   const m = $('modal');
-  m.innerHTML = `<div class="kicker">중대 결정 · ${rankName(rules, S.status, S.rank)} · ${fmtYm(S.ym)}</div>
-    <h3>${d.title}</h3><p>${d.body}</p>${d.src ? `<div class="src">자료 · ${d.src}</div>` : ''}${d.help ? `<div class="src" style="border-color:var(--warn)">${d.help}</div>` : ''}
-    ${d.choices.map((c, i) => `<button class="choice${i === 0 ? ' dflt' : ''}" data-k="${c.k}">[${i + 1}] ${c.label}<small>${c.hint}</small></button>`).join('')}`;
+  m.innerHTML = `<div class="meta"><span class="chip b">중대 결정</span><span class="cap">${rankName(rules, S.status, S.rank)} · ${fmtYm(S.ym)}</span><span class="chip" style="margin-left:auto">시간 정지</span></div>
+    <h3>${d.title}</h3><p>${d.body}</p>${d.src ? `<div class="src">자료 · ${d.src}</div>` : ''}${d.help ? `<div class="src help">${d.help}</div>` : ''}
+    <div class="opts">${d.choices.map((c, i) => `<button class="opt${i === 0 ? ' def' : ''}" data-k="${c.k}"><span class="k">${i + 1}</span><span><b>${c.label}</b><small>${c.hint}${i === 0 ? ' <span class="chip g" style="height:20px;font-size:11px;padding:0 6px">무난한 기본값</span>' : ''}</small></span></button>`).join('')}</div>`;
   m.onclick = (e) => { const b = e.target.closest('[data-k]'); if (b) choose(b.dataset.k); };
   m.onkeydown = (e) => { const c = d.choices[+e.key - 1]; if (c) choose(c.k); };
   m.oncancel = (e) => e.preventDefault();
@@ -688,7 +635,18 @@ document.querySelector('.ctl').onclick = (e) => {
 $('focus').onclick = (e) => { const b = e.target.closest('[data-focus]'); if (b) { setFocus(S, b.dataset.focus || null); render(); } };
 if (![...$('len').options].some((o) => o.value === String(sessionMin))) $('len').insertAdjacentHTML('afterbegin', `<option value="${sessionMin}">${sessionMin}분</option>`);
 $('len').value = String(sessionMin);
-$('len').onchange = (e) => { sessionMin = +e.target.value; render(); };
+$('len').onchange = (e) => { sessionMin = +e.target.value; syncLen(); render(); };
+
+// 모바일 하단 탭: 기록·신원·동기·지도 (데스크톱은 3열이라 탭이 숨겨진다)
+$('tabbar').onclick = (e) => {
+  const b = e.target.closest('[data-tab]'); if (!b) return;
+  document.querySelector('main').dataset.tab = b.dataset.tab;
+  for (const t of $('tabbar').children) t.setAttribute('aria-selected', String(t === b));
+};
+// 시작 화면 한 판 길이: 헤더 선택창과 같은 값을 쓴다
+const syncLen = () => { for (const b of $('lenSeg').children) b.setAttribute('aria-pressed', String(+b.dataset.min === sessionMin)); };
+$('lenSeg').onclick = (e) => { const b = e.target.closest('[data-min]'); if (!b) return; sessionMin = +b.dataset.min; $('len').value = String(sessionMin); syncLen(); };
+syncLen();
 
 // 진입: ?seed= 있으면 그 시드로 추첨, ?auto면 추첨 연출 없이 바로 입영 후 진행
 if (q.get('seed')) seed = q.get('seed');
