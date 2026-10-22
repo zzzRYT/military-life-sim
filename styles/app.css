@@ -271,3 +271,23 @@ textarea { width: 100%; font: inherit; font-size: 15px; padding: 10px 12px; bord
 #moodChart { width: 100%; height: auto; display: block; }
 #moodChart text { font: 11px var(--font); fill: var(--t3); }
 @media print { header, main, .tabbar, #reelOverlay { display: none !important; } .overlay { position: static; background: none; } .panel { max-height: none; } .report .row { display: none; } }
+
+/* ── 관계 사건 (docs/06): 상대 태그 · 결정 시트의 상대 줄 · 선택지 관계 방향 ── */
+.who-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; margin-right: 6px; border-radius: 9999px; font-size: 11px; font-weight: 700; font-style: normal; vertical-align: 1px; background: var(--bg-a); color: var(--t2); }
+.t-junior { background: var(--ok-sub); color: var(--ok); }
+.t-senior { background: #f1ecec; color: var(--brown); }
+.t-peer { background: var(--gsub); color: var(--gs); }
+.t-nco, .t-officer { background: var(--warn-sub); color: var(--warn-t); }
+.t-family, .t-lover { background: var(--bad-sub); color: var(--bad-t); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .t-senior { background: #2e2626; } }
+html[data-theme="dark"] .t-senior { background: #2e2626; }
+dialog .who { display: flex; gap: 12px; align-items: center; padding: 10px 12px; margin-top: 10px; border-radius: 12px; background: var(--bg-n); }
+dialog .who canvas { width: 48px; height: 48px; border-radius: 8px; flex: none; }
+dialog .who > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+dialog .who .nm b { font-size: 15px; font-weight: 600; }
+dialog .who .rel { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--t3); }
+dialog .who .rel .bar { flex: 1; height: 6px; }
+.rel-dir { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.rel-dir em { font-style: normal; font-size: 12px; font-weight: 600; }
+.rel-dir .up { color: var(--gs); }
+.rel-dir .dn { color: var(--bad-t); }

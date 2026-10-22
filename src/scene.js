@@ -7,6 +7,9 @@ export const W = 128, H = 72;
 
 // 사건 id → 장소. 위에서부터 첫 일치. 순서가 의미 있다 (cook_field는 kitchen보다 hill이 먼저).
 const BY_ID = [
+  // 면회실·공중전화 (관계 사건 rel_<상대>_<장소>_… 은 idScene이 id 셋째 칸으로 먼저 고른다)
+  [/^(era_e1_visit_money|h_visit_back_2022)$/, 'visit'],
+  [/^era_e1_(phonebooth|70won|call)$/, 'booth'],
   // 군대 썰·계절 일과·국가 사건 (content/events-lore.js · events-routine.js · events-nation.js)
   [/^lore_(matdasi|combat_ration|gunppang|fry_gunppang)|^rt_(yugyeok|kctc|miles|wasp|gop_weed|shovel|standby|kimjang|alert|ufs|weapon|reserve|heat|recovery|frostbite|cold_adapt)|^h_(rusa|flood|snow_2014|olympic|goseong|ulchin|asf|foot|quake)/, 'hill'],
   [/^lore_(golden_cart|cart_vs_post)/, 'px'],
@@ -58,6 +61,7 @@ const idScene = (S, id) => id === 'drill'
   ? (({ id: d } = {}) => (d in DRILL ? DRILL[d] : 'hill'))(S.env.drills.find((x) => x.ym === S.ym))
   : id === 'leave_go' ? (S.marks?.leave?.ym === S.ym ? S.marks.leave.scene : 'town')
   : /^treat/.test(id) ? 'diner'
+  : /^rel_/.test(id) ? (/^rel_[a-z]+_([a-z]+)_/.exec(id)?.[1] ?? null)
   : LEAVE.has(/^leave_([a-z]+)/.exec(id)?.[1]) ? id.split('_')[1]
     : /committee/.test(id) ? 'committee' : BY_ID.find(([re]) => re.test(id))?.[1];
 
@@ -77,15 +81,57 @@ export function sceneOf(S, pendingId) {
   return { key: baseScene(S), night: false };
 }
 
+// ── 관계 장면 (docs/06): 사건의 상대를 장면 위에 세운다 ──
+// 상대 종류: 후임·선임·동기·간부(행보관·당직부사관)·장교(소대장·당직사관)·가족·연인·외부인. 인물 역할(env.people role)은 KIND로 묶는다
+export const ACTORS = ['junior', 'senior', 'peer', 'nco', 'officer', 'family', 'lover', 'civ'];
+export const ACTOR_LABEL = { junior: '후임', senior: '선임', peer: '동기', nco: '간부', officer: '간부', family: '가족', lover: '연인', civ: '외부인' };
+export const KIND = { junior: 'junior', senior: 'senior', roomSenior: 'senior', exRoomSenior: 'senior', peer: 'peer', sfc: 'nco', lt: 'officer' };
+// 사건 id → 상대. rel_<상대>_… 는 id 둘째 칸, 그 밖에는 사람이 분명한 기존 사건만
+const ACTOR_BY_ID = [
+  [/^p_(junior_|letter_back)|^era_e2_silent_junior|^era_e3_yo_junior/, 'junior'],
+  [/^p_(roomsenior_|senior_|pass_down)|^era_e1_tv_wanggo|^era_e2_visit_room|^rough_day$|^lore_family_ask$/, 'senior'],
+  [/^p_peer_|^era_e1_tv_peer_back|^era_e2_ostracized_peer|^era_e3_concern_peer/, 'peer'],
+  [/^p_sfc_/, 'nco'],
+  [/^era_e1_visit_money$|^h_visit_back_2022$|^bond_(mother_birthday|holiday_leave|funeral_leave)$|^family_/, 'family'],
+  [/^bond_(gomsin_crisis|gomusin_breakup|leave_date|d100)$|^era_e1_(70won|call)$/, 'lover'],
+  [/^treat/, 'civ'],
+];
+export function actorOf(id) {
+  if (!id) return null;
+  const m = /^rel_([a-z]+)_/.exec(id);
+  if (m) return ACTORS.includes(m[1]) ? m[1] : null;
+  return ACTOR_BY_ID.find(([re]) => re.test(id))?.[1] ?? null;
+}
+// 상대를 세울 수 있는 장면 — 인물이 이미 그려진 장면(집·데이트·번화가)이나 탈것·좁은 장면은 뺀다
+const CAST = new Set(['room', 'px', 'office', 'medic', 'kitchen', 'chapel', 'base', 'parade', 'hill', 'fence', 'town', 'port', 'airbase', 'ship', 'visit', 'booth', 'diner']);
+
+/**
+ * 지금 장면에 세울 상대 {actor, beat, tone, id} 또는 null.
+ * beat 'ask' = 그 사람이 낸 결정이 열려 있다 · 'resolve' = 이번 달 그 사람과의 일이 끝났다 (로그 줄의 id).
+ * tone: 그 사람과의 관계 변화(rel)가 먼저, 없으면 내 멘탈 변화로 'up' | 'down' | 'mid'
+ */
+export function castOf(S, pendingId) {
+  const a = actorOf(pendingId);
+  if (a) return { actor: a, beat: 'ask', tone: 'mid', id: pendingId };
+  for (let i = (S.log?.length ?? 0) - 1; i >= 0 && S.log[i].ym === S.ym; i--) {
+    const l = S.log[i], actor = actorOf(l.id);
+    if (!actor) continue;
+    const mine = Object.entries(l.rel ?? {}).filter(([r]) => (KIND[r] ?? r) === actor).reduce((s, [, v]) => s + v, 0);
+    const v = mine || Object.values(l.fx ?? {}).reduce((s, x) => s + x, 0);
+    return { actor, beat: 'resolve', tone: v > 0 ? 'up' : v < 0 ? 'down' : 'mid', id: l.id };
+  }
+  return null;
+}
+
 // ── 그리기 ──
-let g, f, ss, night; // ctx, 프레임 번호, 계절, 밤
+let g, f, ss, night, era; // ctx, 프레임 번호, 계절, 밤, 시대 id (era.json)
 const R = (c, x, y, w = 1, h = 1) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
 const SKY = { winter: '#9fb3c0', spring: '#a9cde0', summer: '#7fc0e8', autumn: '#c9b59a' };
 const GROUND = { winter: '#eef1f2', spring: '#8fae5a', summer: '#5e8f3b', autumn: '#a5874f' };
 const LEAF = { winter: '#dfe7ea', spring: '#f4b7c8', summer: '#4f8f3a', autumn: '#d07a2c' };
 const FIELD = new Set(['hill', 'march', 'fence', 'gas']);
-const INDOOR = new Set(['room', 'px', 'office', 'medic', 'chapel', 'committee', 'diner']);
-const OUTDOOR = new Set(['base', 'parade', 'hill', 'march', 'fence', 'ship', 'port', 'tank', 'gas', 'beach', 'airbase', 'peak', 'town', 'drive', 'downtown', 'date', 'travel', 'brawl']);
+const INDOOR = new Set(['room', 'px', 'office', 'medic', 'chapel', 'committee', 'diner', 'visit']);
+const OUTDOOR = new Set(['base', 'parade', 'hill', 'march', 'fence', 'ship', 'port', 'tank', 'gas', 'beach', 'airbase', 'peak', 'town', 'drive', 'downtown', 'date', 'travel', 'brawl', 'booth']);
 const LEAVE = new Set(['downtown', 'home', 'pcroom', 'pub', 'karaoke', 'date', 'travel', 'brawl']); // 휴가: 사복 + 짧은 머리
 const DARK = new Set(['tod', 'downtown', 'pcroom', 'pub', 'karaoke', 'brawl']); // 밤이 그림에 박힌 장면 — 밤 덧칠 없음
 
@@ -125,9 +171,13 @@ function soldier(x, y, o) {
   if (o.vest) { R('#e8742c', x + 1, y + 9, 8, 8); R('#c95e1f', x + 4, y + 10, 2, 7); }
   if (o.apron) R('#f4f4f0', x + 2, y + 11, 6, 9);
   if (o.pack) { R('#6b5638', x - 1, y + 7, 2, 4); R('#6b5638', x + 9, y + 7, 2, 4); R('#4a3b26', x + 2, y + 10, 1, 6); R('#4a3b26', x + 7, y + 10, 1, 6); }
+  if (o.jacket) { R(o.jacket, x, y + 9, 10, 8); for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) R('#6f6330', x + 1 + i * 3, y + 10 + j * 3); } // 깔깔이 (방상내피)
+  if (o.cross) { R(o.jacket ?? U2, x + 1, y + 13, 8, 2); R(SK, x + 1, y + 13); R(SK, x + 8, y + 14); } // 팔짱
+  if (o.band) R(o.band, x - 1, y + 11, 2, 3); // 당직 완장
   if (!o.civ) {
     R(o.marine ? '#c8322b' : '#e8e4d0', x + 1, y + 11, 3, 1); // 명찰 (해병 빨간 명찰)
-    for (let i = 0; i <= o.rank; i++) R('#151515', x + 6, y + 11 + i * 2, 2, 1); // 계급장 (이병 1줄 ~ 병장 4줄)
+    if (o.badge) { R(o.badge, x + 6, y + 11, 2, 1); R(o.badge, x + 5, y + 12, 4, 1); R(o.badge, x + 6, y + 13, 2, 1); } // 간부 계급장
+    else for (let i = 0; i <= o.rank; i++) R('#151515', x + 6, y + 11 + i * 2, 2, 1); // 계급장 (이병 1줄 ~ 병장 4줄)
   }
   // 다리·신발 (치마면 치마 + 맨다리)
   if (o.skirt) { R(U2, x + 1, y + 17, 8, 4); R(SK, x + 2, y + 21, 2, 2); R(SK, x + 6, y + 21, 2, 2); }
@@ -145,6 +195,7 @@ function soldier(x, y, o) {
   else R(M, x + 4, y + 8, 2, 1);
   if (o.drunk) { R('#e0605a', x + 1, y + 6, 2, 2); R('#e0605a', x + 7, y + 6, 2, 2); R('#e0605a', x + 4, y + 6, 2, 1); }
   if (o.paint) { R('#34431f', x + 1, y + 6, 2, 1); R('#34431f', x + 7, y + 6, 2, 1); R('#1f2614', x + 2, y + 3, 6, 1); }
+  if (o.stache) R('#3a2a20', x + 3, y + 7, 4, 1); // 콧수염 (나이 든 간부)
   // 모자
   const hat = {
     none: () => { R('#1e1a16', x + 2, y + 1, 6, 1); R('#1e1a16', x + 1, y + 2, 8, 1); },
@@ -165,6 +216,8 @@ function soldier(x, y, o) {
   if (o.shades) R('#111', x + 2, y + 5, 6, 1);
   if (o.gun) for (let i = 0; i < 12; i++) R('#222', x - 1 + i, y + 19 - i);
   if (o.hold) R(o.hold, x + 3, y + 15, 4, 3);
+  if (o.phone) { R('#1d1d22', x + 6, y + 13, 3, 4); R('#7fc0f0', x + 7, y + 14); } // 손에 든 휴대폰
+  if (o.sweat) { R('#7fc0f0', x + 9, y + 1, 1, 2); R('#7fc0f0', x + 10, y + 2, 1, 2); } // 식은땀
 }
 
 /** 장면별 옷차림 */
@@ -180,6 +233,7 @@ export function outfit(S, key) {
     gun: FIELD.has(key) && key !== 'gas', pack: key === 'march', paint: key === 'hill',
     ear: { airbase: '#e8c234', pcroom: '#222' }[key], apron: key === 'kitchen', vest: key === 'beach',
     hold: { px: '#e2473c', karaoke: '#333', travel: '#222', pub: '#3d9a5a' }[key] ?? null,
+    phone: key === 'room' && S.era?.id === 'e05', // 일과 후 개인 휴대폰 (2020-07 전면 시행 이후 세대)
     ...(LEAVE.has(key) && { hat: 'none', civ: ['#3b6ea8', '#2d3a4f'], drunk: key === 'pub' || key === 'brawl', shades: key === 'travel' }),
   };
 }
@@ -189,6 +243,56 @@ const FRIENDS = [npc({ civ: ['#c8503a', '#2d3a4f'] }), npc({ civ: ['#e8e2d0', '#
 const LOVER = npc({ hat: 'long', civ: ['#f4f0e6', '#d27a96'], skirt: true, mood: 80 });
 
 const glyph = (rows, x, y, c) => rows.forEach((r, j) => [...r].forEach((b, i) => b === '1' && R(c, x + i, y + j)));
+
+// 상대의 생김새: 나(o)를 바탕으로 계급·소품만 바꾼다. 간부는 계급장 대신 금·은 마름모, 선임은 팔짱(+겨울 깔깔이)
+const LOOK = {
+  junior: (o) => ({ ...o, rank: 0, mood: 40, hold: null, phone: false }),
+  senior: (o, key) => ({ ...o, rank: Math.min(3, Math.max(2, o.rank + 1)), mood: 45, cross: true, hold: null, phone: false, hairC: '#3a2a20',
+    jacket: INDOOR.has(key) && (ss === 'winter' || ss === 'autumn') && !o.navy ? '#8c7d3c' : null }),
+  peer: (o) => ({ ...o, mood: 60, hold: null, phone: false }),
+  nco: (o) => ({ ...o, hat: 'cap', rank: -1, badge: '#d9b84a', stache: true, mood: 50, hold: '#e8e4d0', phone: false, chub: true }),
+  officer: (o) => ({ ...o, hat: 'cap', rank: -1, badge: '#c8ccd0', band: night ? '#f2c230' : null, mood: 50, hold: null, phone: false, chub: false }),
+  family: () => npc({ hat: 'perm', civ: ['#d97a8a', '#5a4a6a'], mood: 85 }),
+  lover: () => LOVER,
+  civ: () => npc({ hat: 'perm', hairC: '#9a9a9a', civ: ['#e8e2d0', '#5a4a3a'], apron: true, mood: 75 }),
+};
+// 머리 위 말풍선 (7×7 + 꼬리). '!' 등장 · '?' 결정 · 하트/음표 좋음 · 땀/화 나쁨 · '…' 덤덤
+const EMOTE = {
+  bang: [['010', '010', '010', '000', '010'], '#d33'],
+  ask: [['111', '001', '010', '000', '010'], '#2a211b'],
+  heart: [['01010', '11111', '11111', '01110', '00100'], '#ff5a7a'],
+  note: [['00110', '00101', '00100', '11100', '11100'], '#276f51'],
+  drop: [['00100', '01110', '11111', '11111', '01110'], '#4a90d6'],
+  mad: [['01010', '11011', '00000', '11011', '01010'], '#d33'],
+  dots: [['00000', '00000', '10101', '00000', '00000'], '#2a211b'],
+};
+function bubble(x, y, kind) {
+  const [rows, c] = EMOTE[kind], w = rows[0].length;
+  R('#2a211b', x - 1, y - 1, w + 4, 9); R('#fafaf4', x, y, w + 2, 7); R('#fafaf4', x + 1, y + 7, 2, 1); R('#2a211b', x + 1, y + 8, 2, 1);
+  glyph(rows, x + 1, y + 1, c);
+}
+/** 결과 말풍선: 상대 쪽 관계가 오르면 하트(윗사람은 음표), 내리면 화, 내 마음만 다쳤으면 땀 */
+const emoteOf = (c) => c.beat === 'ask' ? 'ask'
+  : c.tone === 'up' ? (['senior', 'nco', 'officer'].includes(c.actor) ? 'note' : 'heart')
+    : c.tone === 'down' ? (['senior', 'nco', 'officer'].includes(c.actor) ? 'mad' : 'drop') : 'dots';
+
+/**
+ * 상대를 내 옆에 세운다. 윗사람(선임·간부·가족)은 오른쪽(상석)에서, 후임은 왼쪽에서 들어온다.
+ * t: 이 장면 상태가 시작된 뒤 지난 프레임. 0~3 미끄러져 들어옴 + '!' → 4~ 결과 말풍선 (결정이면 '?'). still이면 바로 끝 그림
+ */
+function drawCast(c, at, o, key, t) {
+  const left = c.actor === 'junior';
+  let side = left ? -1 : 1;
+  if (at[0] + side * 15 < 2 || at[0] + side * 15 > W - 12) side = -side;
+  const x = at[0] + side * 15, slide = Math.max(0, 4 - t) * 9;
+  const ax = x + side * slide, ay = at[1];
+  const look = LOOK[c.actor](o, key);
+  if (c.beat === 'resolve') look.mood = c.tone === 'up' ? 80 : c.tone === 'down' ? (['senior', 'nco', 'officer'].includes(c.actor) ? 20 : 30) : look.mood;
+  if (c.beat === 'resolve' && c.tone === 'down' && c.actor === 'junior') look.sweat = true;
+  soldier(ax, ay, look);
+  if (t < 4) { if (t >= 2) bubble(ax + 2, ay - 11, c.beat === 'ask' ? 'ask' : 'bang'); return; }
+  bubble(ax + 2, ay - 11 - (t < 6 ? (t & 1) : 0), emoteOf(c));
+}
 
 const SCENES = {
   base(me) { // 부대 막사
@@ -206,13 +310,36 @@ const SCENES = {
     for (let r = 0; r < 2; r++) for (let c = 0; c < 8; c++) { const x = 18 + c * 8 + r * 2, y = 36 + r * 5; R('#4b5730', x, y, 3, 1); R(SKIN, x, y + 1, 3, 1); R('#56653a', x, y + 2, 3, 3); }
     me(54, 30);
   },
-  room(me) { // 생활관
+  room(me) { // 생활관 — 시대 소품: e01 침상·TV, e03 수신전용폰, e04 휴대폰 보관함, e05 손에 든 휴대폰 (research/era-culture.md §0)
     R('#d8d1bb', 0, 0, W, 44); R('#9a7650', 0, 44, W, 28); for (const y of [50, 58, 66]) R('#86643f', 0, y, W, 1);
     R('#6b5a45', 6, 8, 28, 20); R(night ? '#1b2440' : SKY[ss], 8, 10, 24, 16); R('#6b5a45', 19, 10, 2, 16); R('#6b5a45', 8, 17, 24, 2);
     for (let i = 0; i < 5; i++) { R('#7d8a6b', 46 + i * 16, 6, 14, 26); R('#e8e4d0', 50 + i * 16, 10, 6, 2); R('#3f4b29', 57 + i * 16, 18, 1, 3); }
-    R('#5b4a3a', 40, 36, 88, 8); for (let i = 0; i < 5; i++) R('#5b6d3e', 46 + i * 16, 32, 11, 4);
+    if (era === 'e01') { // 마루 침상 한 줄 + 각 잡은 모포 + 왕고 자리 TV
+      R('#a07a4a', 36, 34, 92, 10); R('#86643f', 36, 34, 92, 1); for (let i = 0; i < 7; i++) { R('#5b6d3e', 40 + i * 12, 30, 9, 4); R('#4a5a32', 40 + i * 12, 32, 9, 1); }
+      R('#333', 112, 1, 14, 9); R(f & 4 ? '#7fa8c8' : '#9fc0d8', 113, 2, 12, 6);
+    } else { R('#5b4a3a', 40, 36, 88, 8); for (let i = 0; i < 5; i++) R('#5b6d3e', 46 + i * 16, 32, 11, 4); }
+    if (era === 'e03') { R('#e8e8e0', 60, 2, 4, 3); R('#333', 61, 3, 2, 1); } // 수신전용폰
+    if (era === 'e04') { R('#7a7f80', 2, 30, 14, 10); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) R(night ? '#2a2f30' : '#5a5f60', 3 + i * 4, 31 + j * 4, 3, 3); } // 휴대폰 보관함
     R(night ? '#7a7a6a' : '#fafaf0', 50, 1, 40, 1);
     me(20, 32);
+  },
+  visit(me) { // 면회실: 창가 탁자, 자판기, 통닭 상자 — 마주 앉는 사람은 관계 장면이 세운다
+    R('#efe6d2', 0, 0, W, 48); R('#b9a57e', 0, 48, W, 24); for (let x = 0; x < W; x += 8) R('#a8946c', x, 48, 1, 24);
+    R('#6b5a45', 40, 6, 48, 22); R(night ? '#1b2440' : SKY[ss], 42, 8, 44, 18); R('#6b5a45', 63, 8, 2, 18); R('#e6b8a0', 40, 6, 6, 24); R('#e6b8a0', 82, 6, 6, 24);
+    R('#2e5a8a', 104, 10, 20, 38); R('#cfe2ea', 106, 13, 16, 18); for (let i = 0; i < 3; i++) R(['#e2473c', '#f2c230', '#52a35a'][i], 108 + i * 5, 16, 3, 5); R('#222', 108, 38, 12, 3);
+    R('#3a3a3a', 6, 4, 22, 6); R('#f2c230', 8, 6, 18, 2); // 면회실 표지
+    me(34, 26);
+    R('#c8935a', 22, 44, 70, 3); R('#a8743f', 26, 47, 3, 12); R('#a8743f', 85, 47, 3, 12);
+    R('#e8c070', 46, 38, 14, 6); R('#c33', 46, 40, 14, 1); R('#fafafa', 64, 39, 3, 5); R('#3d9a5a', 69, 39, 3, 5); // 통닭 상자·음료
+  },
+  booth(me) { // 공중전화 앞 줄 (침상·공중전화 시대): 부스 셋, 뒤로 늘어선 줄
+    sky(); R('#cfc8b0', 0, 18, W, 34); R('#6b5a45', 0, 14, W, 4); ground(52, '#a9a089');
+    for (let i = 0; i < 3; i++) { const x = 6 + i * 22; R('#2f6fb0', x, 22, 18, 30); R('#bcd8ea', x + 2, 25, 14, 18); R('#d9d9d0', x + 6, 28, 6, 8); R('#222', x + 8, 30, 2, 4); }
+    me(10, 26);
+    R('#222', 12, 30, 1, 5); R('#222', 11, 29, 3, 2); // 수화기
+    const o = { ...me.o, mood: 40, phone: false };
+    for (let i = 0; i < 3; i++) soldier(80 + i * 15, 28, o);
+    for (let i = 0; i < 3; i++) R('#f2c230', 96 + i * 3, 25 - ((f + i) & 1), 2, 2); // 손에 쥔 동전
   },
   px(me) { // PX
     R('#f1ede2', 0, 0, W, 50); for (let x = 0; x < W; x += 8) for (let y = 50; y < H; y += 8) R((x + y) & 8 ? '#bcc5c8' : '#cfd6d8', x, y, 8, 8);
@@ -491,17 +618,49 @@ function street(crowd = true) {
   if (crowd) for (let i = 0; i < 7; i++) { const x = (i * 19 + 4) % W; R('#16161e', x, 44, 3, 8); R('#16161e', x, 42, 3, 2); }
 }
 
-/** 장면 그리기. g2: 128×72 캔버스 2d 컨텍스트, frame: 애니메이션용 프레임 번호 */
-export function drawScene(g2, S, pendingId, frame = 0) {
-  g = g2; f = frame;
+/**
+ * 장면 그리기. g2: 128×72 캔버스 2d 컨텍스트, frame: 애니메이션용 프레임 번호.
+ * opt.t: 지금 관계 장면 상태(castOf)가 시작된 뒤 지난 프레임 (없으면 끝 그림), 반환: {key, cast}
+ */
+export function drawScene(g2, S, pendingId, frame = 0, opt = {}) {
+  g = g2; f = frame; era = S.era?.id;
   const m = +S.ym.slice(5); ss = m === 12 || m <= 2 ? 'winter' : m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn';
   const sc = sceneOf(S, pendingId); night = sc.night;
-  const o = outfit(S, sc.key), me = (x, y) => soldier(x, y, o);
+  const o = outfit(S, sc.key);
+  let at = null;
+  const me = (x, y) => { at = [x, y]; soldier(x, y, o); };
   me.o = o;
   SCENES[sc.key](me);
+  const c = CAST.has(sc.key) && at ? castOf(S, pendingId) : null;
+  const t = opt.t ?? 99;
+  if (c) drawCast(c, at, o, sc.key, t);
   if (ss === 'winter' && OUTDOOR.has(sc.key)) for (let i = 0; i < 24; i++) R('#fff', (i * 37 + f) % W, (i * 23 + f * 2) % H);
   if (night && !DARK.has(sc.key)) R('rgba(12,18,44,.4)', 0, 0, W, H);
-  return sc.key;
+  if (c?.beat === 'resolve' && c.tone !== 'mid' && t >= 4) R(c.tone === 'up' ? 'rgba(255,190,120,.10)' : 'rgba(60,80,140,.16)', 0, 0, W, H); // 결과의 온도
+  if (c?.beat === 'ask') { const h = Math.min(6, 2 + t * 2); R('rgba(0,0,0,.14)', 0, 0, W, H); R('#0b0b0b', 0, 0, W, h); R('#0b0b0b', 0, H - h, W, h); } // 시간 정지: 레터박스
+  return { key: sc.key, cast: c };
+}
+
+// 4×4 베이어 행렬 — 장소가 바뀔 때 이전 그림을 픽셀 디더로 녹여 낸다
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+/** 디졸브: 방금 그린 장면 위에 prev(이전 장면 ImageData)를 진행도 p(0~1)만큼 걷어 내고 덮는다. p ≥ 1이면 아무것도 안 한다 */
+export function dissolve(g2, prev, p) {
+  if (!prev || p >= 1) return;
+  const cur = g2.getImageData(0, 0, W, H), a = cur.data, b = prev.data, k = p * 16;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (BAYER[(y & 3) * 4 + (x & 3)] < k) continue;
+    const i = (y * W + x) * 4;
+    a[i] = b[i]; a[i + 1] = b[i + 1]; a[i + 2] = b[i + 2]; a[i + 3] = b[i + 3];
+  }
+  g2.putImageData(cur, 0, 0);
+}
+
+/** 결정 창의 상대 얼굴 (20×20: 머리와 어깨). actor = ACTORS 중 하나 */
+export function drawPortrait(g2, S, actor) {
+  g = g2; f = 0; night = false; era = S.era?.id;
+  const m = +S.ym.slice(5); ss = m === 12 || m <= 2 ? 'winter' : m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn';
+  g.clearRect(0, 0, 20, 20); R('#e9e8df', 0, 0, 20, 20);
+  soldier(5, 4, LOOK[actor](outfit(S, 'room'), 'room'));
 }
 
 /** 신원 카드 얼굴 (16×16) */

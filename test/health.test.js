@@ -52,7 +52,7 @@ test('병원: 분야는 고르게 (습관 없으면 균등), 대사는 과체중
 });
 
 test('병원: 한 판 전체에서 수도병원 입원은 흔하고, 병원 전역은 드물다', () => {
-  let hosp = 0, out = 0; const N = 200;
+  let hosp = 0, out = 0; const N = 400; // 입원율이 5% 선 바로 위(약 6%)라 200판이면 시드 운에 흔들린다
   for (let i = 0; i < N; i++) {
     const S = newGame(`hp-${i}`, rules, { birth: '2006-05-01' });
     autoEnlist(S, rules); runGame(S, rules, { events: EVENTS });

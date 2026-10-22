@@ -310,6 +310,7 @@ export const ERA_EVENTS = [
     c: (S) => S.rank >= 2 && here(S, 'roomSenior') && since(S, 'era_dongki_room', 2),
     build: (S) => ({
       title: '놀러 온 선임',
+      who: 'roomSenior',
       body: fmt(S, '동기 생활관이 자리 잡은 지 석 달. 오늘 밤 {roomSenior}이 우리 방 문을 열고 들어와 침대 끝에 앉았습니다. "그냥 놀러 왔다." 방의 숨소리가 달라졌습니다.'),
       choices: [
         { k: 'welcome', label: '반갑게 받아 준다', hint: '선임과 가까워진다 · 옛 질서가 돌아온다' },
