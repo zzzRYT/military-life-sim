@@ -235,6 +235,8 @@ textarea { width: 100%; font: inherit; font-size: 15px; padding: 10px 12px; bord
 /* 전역 기록: 주마등 → 보고서 */
 #reelOverlay { background: #0d0f0b; }
 .reel { color: #e6e6dc; text-align: center; max-width: 640px; width: 100%; cursor: pointer; }
+#reelScene { width: 100%; aspect-ratio: 16/9; background: #1a1f18; margin-bottom: 18px; border-radius: 4px; }
+@media (max-height: 560px) { #reelScene { width: auto; height: 42vh; margin: 0 auto 12px; } }
 .reel .ym { font: 600 14px var(--mono); color: #9fb56b; letter-spacing: .1em; }
 .reel .txt { font: 600 26px/1.45 var(--serif); margin: 14px 0 28px; min-height: 3em; }
 .reel .fade { animation: reelIn 1.6s ease both; }
