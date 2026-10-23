@@ -13,6 +13,7 @@
 | [docs/04-narrative-design.md](docs/04-narrative-design.md) | 서사 설계: 흔적·줄기·되부르기·연출 감독, 판마다 다른 이야기를 위한 지표와 단계 |
 | [docs/05-era-and-fun.md](docs/05-era-and-fun.md) | 시대와 재미: 입대 연도 추첨, 이름 있는 사람들, 딜레마, 꼬리 사건, 같은 날 입대한 사람들 |
 | [docs/06-relationship-events.md](docs/06-relationship-events.md) | 관계 사건과 장면 전이: 후임·선임·동기·간부·가족·연인·외부인 사건, 장면 위 상대·말풍선, 결정 레터박스, 장소 디졸브 |
+| [docs/fun-brainstorm.md](docs/fun-brainstorm.md) | 재미 브레인스토밍: 지금 재미있는 곳·평평한 곳, 아이디어 22개와 순위, 구현한 '나의 복무 한 줄'(src/timeline.js)과 '갈림길'(src/fork.js) |
 | [research/official.md](research/official.md) | 병무청·국방부·법령 공식 데이터 조사 (출처 코드 `[Sx]`) |
 | [research/era-official.md](research/era-official.md) | 입대 연도별 복무기간·봉급·적금·휴대폰·사건사고 (1990~2026) |
 | [research/era-culture.md](research/era-culture.md) | 시대별 병영 문화·부조리·여가·은어 |
