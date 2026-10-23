@@ -177,6 +177,7 @@
 <!-- 전역 기록: 주마등 → 보고서 -->
 <div class="overlay" id="reelOverlay" hidden>
   <div class="reel" id="reel" aria-live="polite">
+    <canvas id="reelScene" width="128" height="72" aria-hidden="true"></canvas>
     <div class="ym" id="reelYm"></div>
     <div class="txt" id="reelTxt"></div>
     <div class="dots" id="reelDots"></div>
@@ -198,7 +199,7 @@ import { buildRecap, cohortStats, headline } from './src/recap.js';
 import { drawYear } from './src/draw.js';
 import { makeRng } from './src/rng.js';
 import { HABITS, gain, shape } from './src/body.js';
-import { drawScene, drawAvatar, drawPortrait, dissolve, castOf, actorOf, ACTOR_LABEL } from './src/scene.js';
+import { drawScene, drawAvatar, drawPortrait, dissolve, castOf, actorOf, reelScene, ACTOR_LABEL } from './src/scene.js';
 import { timeline } from './src/timeline.js';
 import { snapshot, forkReport } from './src/fork.js';
 
@@ -549,7 +550,7 @@ function step(dt) {
 }
 
 // ── 전역 기록: 주마등 → 보고서 ──
-let recap = null, reelTimer = null, shareText = '', skipFrom = 0;
+let recap = null, reelTimer = null, reelPaint = null, shareText = '', skipFrom = 0;
 // 빨리 감기 중 결정·수첩이 열리면 원래 속도로 돌아온다
 const endSkip = () => { if (skipFrom) { speed = skipFrom; skipFrom = 0; } };
 const REEL_MS = 1600;
@@ -567,6 +568,7 @@ function playReel() {
     clearTimeout(reelTimer);
     if (i >= recap.movie.length) return showReport();
     const l = recap.movie[i];
+    paintReel(reelScene(S, l));
     $('reelYm').textContent = fmtYm(l.ym);
     const t = $('reelTxt');
     t.textContent = l.text;
@@ -577,6 +579,19 @@ function playReel() {
   };
   $('reel').onclick = (e) => { if (e.target.id === 'btnSkipReel') { clearTimeout(reelTimer); showReport(); } else show(); };
   show();
+}
+// 주마등 한 장의 장면: 그 줄이 일어난 그때의 장소·상대를 플레이 화면처럼 움직이고, 앞 장은 디더로 녹인다 (paintScene과 같은 방식)
+function paintReel(r) {
+  clearInterval(reelPaint);
+  const c = $('reelScene').getContext('2d'), at = Math.floor(performance.now() / FRAME);
+  const prev = !STILL && reelPaint ? c.getImageData(0, 0, 128, 72) : null;
+  const paint = () => {
+    const fr = Math.floor(performance.now() / FRAME);
+    drawScene(c, r.S, null, fr, { scene: r.scene, t: STILL ? 99 : fr - at });
+    if (prev) dissolve(c, prev, (fr - at) / 4);
+  };
+  paint();
+  reelPaint = setInterval(paint, FRAME);
 }
 function moodSvg(hist, lo, hi) {
   const W = 600, H = 120, P = 18, n = hist.length;
@@ -594,6 +609,7 @@ function moodSvg(hist, lo, hi) {
 }
 function showReport() {
   const R = recap;
+  clearInterval(reelPaint); reelPaint = null;
   $('reelOverlay').hidden = true;
   $('reportOverlay').hidden = false;
   const pct = R.rarity < 1 ? R.rarity.toFixed(2) : R.rarity.toFixed(1);

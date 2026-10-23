@@ -26,6 +26,7 @@ import {
 } from './rules.js';
 import { drawAll, drawEnv, namePeople, drawPerson } from './draw.js';
 import { newBody, bodyMonth } from './body.js';
+import { sceneOf, baseScene } from './scene.js';
 
 export const ENGINE_VER = 1;
 
@@ -64,7 +65,15 @@ export function rand(S) {
 }
 
 function log(S, text) {
-  S.log.push({ ym: S.ym, t: Math.round(S.t * 1000) / 1000, text });
+  S.log.push({ ym: S.ym, t: Math.round(S.t * 1000) / 1000, text, at: atNow(S) });
+}
+/**
+ * 줄을 남긴 그때 — 전역 기록 주마등(scene.js reelScene)이 이걸로 그 장면을 다시 그린다.
+ * {scene, night?, phase, rank, mind}: id가 있으면 그 사건의 장소, 없으면 그때 근무지 기본 장소
+ */
+function atNow(S, id = null, phase = S.phase) {
+  const T = { ...S, phase }, sc = id ? sceneOf(T, id) : { key: baseScene(T), night: false };
+  return { scene: sc.key, ...(sc.night && { night: true }), phase, rank: S.rank, mind: Math.round(S.st.mind) };
 }
 
 // ── 흔적 (docs/04 §3-1): 사건·결정이 남긴 이름 붙은 사실. needs/echo가 읽는다 ──
@@ -305,6 +314,7 @@ export function enlist(S, rules, enlistIso, rngFn) {
   if (ex) log(S, `${ex.label} — ${rankName(rules, S.status, S.rank)}부터 시작${credit ? ` (복무 ${credit}개월 인정)` : ''}`);
   const tc = S.training;
   log(S, `${tc.name}${tc.place ? `(${tc.place})` : ''} 입소`);
+  S.log.at(-1).at = atNow(S, null, 'train'); // 입소 줄은 아직 pre지만 그림은 훈련소
   // 나이 요소: 부대 평균(20~24) 대비 상대 나이 → 이벤트 조건·문구 분기용
   S.flags.ageGap = S.age - getAvgAge(rules, S.branch);
   if (S.flags.ageGap >= 3) log(S, `동기들보다 ${S.flags.ageGap}살 위로 입영했다`);
@@ -592,8 +602,11 @@ export function fire(S, rules, item, opts = {}) {
     }
     case 'event': {
       const out = withEcho(S, item.ref, item.ref.run(S) || {});
-      if (out.t) { log(S, out.t); S.log.at(-1).id = item.id; if (out.echoYm) S.log.at(-1).echo = out.echoYm; tagFx(S, out); } // id: 장면이 이 줄로 상대를 세운다 (scene.js castOf)
+      const ph = S.phase;
+      let line = null;
+      if (out.t) { log(S, out.t); line = S.log.at(-1); line.id = item.id; if (out.echoYm) line.echo = out.echoYm; tagFx(S, out); } // id: 장면이 이 줄로 상대를 세운다 (scene.js castOf)
       applyOut(S, out);
+      if (line) line.at = atNow(S, item.id, ph); // 결과(흔적·멘탈)까지 반영한 뒤 장면을 찍는다 — leave_go는 흔적으로 장소를 고른다
       markFired(S, item.id);
       break;
     }
@@ -612,7 +625,9 @@ export function fire(S, rules, item, opts = {}) {
       S.log.at(-1).id = item.id;
       tagFx(S, out);
       (S.choices ??= []).push({ ym: S.ym, id: item.id, k: choice.k });
+      const line = S.log.at(-1), ph = S.phase;
       applyOut(S, out);
+      line.at = atNow(S, item.id, ph);
       markFired(S, item.id);
       break;
     }

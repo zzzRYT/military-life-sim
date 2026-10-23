@@ -81,6 +81,18 @@ export function sceneOf(S, pendingId) {
   return { key: baseScene(S), night: false };
 }
 
+/**
+ * 주마등 한 장 (전역 기록): 로그 줄 l이 일어난 그때의 판 {S, scene}. 상대는 그 줄 하나로 세운다 (castOf).
+ * l.at = 엔진이 줄을 남길 때 찍은 {scene, night?, phase, rank, mind}. 없는 줄(예전 저장)은 그 달의 페이즈로 사건 장소 → 근무지 기본 장소
+ */
+export function reelScene(S, l) {
+  const a = l.at ?? {}, served = S.log?.find((x) => /^신병교육 수료/.test(x.text))?.ym;
+  const phase = a.phase ?? (l.ym < (S.dates?.enlist ?? '').slice(0, 7) ? 'pre' : served && l.ym >= served ? 'serve' : 'train');
+  const T = { ...S, ym: l.ym, phase, rank: a.rank ?? S.rank, st: { ...S.st, mind: a.mind ?? S.st?.mind }, log: [l], recent: [], flags: {} };
+  const key = a.scene ?? (l.id && idScene(T, l.id)) ?? baseScene(T);
+  return { S: T, scene: { key, night: a.night ?? (DARK.has(key) || NIGHT.test(l.id ?? '')) } };
+}
+
 // ── 관계 장면 (docs/06): 사건의 상대를 장면 위에 세운다 ──
 // 상대 종류: 후임·선임·동기·간부(행보관·당직부사관)·장교(소대장·당직사관)·가족·연인·외부인. 인물 역할(env.people role)은 KIND로 묶는다
 export const ACTORS = ['junior', 'senior', 'peer', 'nco', 'officer', 'family', 'lover', 'civ'];
@@ -620,12 +632,12 @@ function street(crowd = true) {
 
 /**
  * 장면 그리기. g2: 128×72 캔버스 2d 컨텍스트, frame: 애니메이션용 프레임 번호.
- * opt.t: 지금 관계 장면 상태(castOf)가 시작된 뒤 지난 프레임 (없으면 끝 그림), 반환: {key, cast}
+ * opt.t: 지금 관계 장면 상태(castOf)가 시작된 뒤 지난 프레임 (없으면 끝 그림), opt.scene: sceneOf 대신 그릴 {key, night} (주마등), 반환: {key, cast}
  */
 export function drawScene(g2, S, pendingId, frame = 0, opt = {}) {
   g = g2; f = frame; era = S.era?.id;
   const m = +S.ym.slice(5); ss = m === 12 || m <= 2 ? 'winter' : m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn';
-  const sc = sceneOf(S, pendingId); night = sc.night;
+  const sc = opt.scene ?? sceneOf(S, pendingId); night = sc.night;
   const o = outfit(S, sc.key);
   let at = null;
   const me = (x, y) => { at = [x, y]; soldier(x, y, o); };
