@@ -291,3 +291,72 @@ dialog .who .rel .bar { flex: 1; height: 6px; }
 .rel-dir em { font-style: normal; font-size: 12px; font-weight: 600; }
 .rel-dir .up { color: var(--gs); }
 .rel-dir .dn { color: var(--bad-t); }
+
+/* ── 나의 복무 한 줄 (src/timeline.js · docs/fun-brainstorm.md E1): 기분 곡선 · 계급 띠 · 지금 · 갈림길 핀 · 돌아온 선택 호 ── */
+.tl { padding: 10px 14px 12px; border-top: 1px solid var(--line); }
+.tl-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tl-head b { font-size: 14px; }
+.tl-next { font-size: 12.5px; color: var(--gs); font-weight: 600; }
+.tl-plot { position: relative; margin-top: 18px; }
+.tl-mood { display: block; width: 100%; height: 30px; }
+.tl-mood line { stroke: var(--line-s); stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+.tl-mood .a { fill: var(--gsub); }
+.tl-mood .l { fill: none; stroke: var(--g); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.tl-track { position: relative; height: 22px; border-radius: 6px; overflow: visible; background: var(--bg-a); }
+.tl-band { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; font-size: 11px; font-weight: 700; overflow: hidden; white-space: nowrap; border-right: 1px solid var(--bg); }
+.tl-band.r0 { background: var(--gsub); color: var(--gs); border-radius: 6px 0 0 6px; }
+.tl-band.r1 { background: var(--g2); color: var(--on-g2); }
+.tl-band.r2 { background: var(--g); color: #0b1f16; }
+.tl-band.r3 { background: var(--gs); color: var(--bg); border-radius: 0 6px 6px 0; border-right: 0; }
+/* 아직 안 산 날: 띠 위에 반투명 빗금 */
+.tl-future { position: absolute; top: 0; bottom: 0; right: 0; border-radius: 0 6px 6px 0; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--bg) 40%, transparent) 0 4px, color-mix(in srgb, var(--bg) 58%, transparent) 4px 8px); }
+.tl-now { position: absolute; top: -30px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--t); pointer-events: none; }
+.tl-now i { position: absolute; top: -16px; left: 1px; transform: translateX(-50%); font: 700 11px/1 var(--font); font-style: normal; background: var(--t); color: var(--bg); padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.tl-now.l i { transform: none; left: -1px; }
+.tl-now.r i { transform: translateX(-100%); left: 1px; }
+.tl-pin { position: absolute; top: 50%; width: 10px; height: 10px; min-height: 0; padding: 0; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid var(--t2); background: var(--bg); cursor: pointer; z-index: 1; }
+.tl-pin::before { content: ""; position: absolute; inset: -8px; } /* 누르기 쉬운 넓이 */
+.tl-pin.k-echo { background: var(--ok); border-color: var(--bg); }
+.tl-pin.k-bad { background: var(--bad); border-color: var(--bg); border-radius: 2px; }
+.tl-pin.k-good { background: var(--warn); border-color: var(--warn-t); border-radius: 2px; }
+.tl-pin.on { width: 14px; height: 14px; margin: -7px 0 0 -7px; box-shadow: 0 0 0 3px var(--t); z-index: 2; }
+.tl-pin.star { width: 18px; height: 18px; margin: -9px 0 0 -9px; background: var(--warn); border: 2px solid var(--t); z-index: 2; display: grid; place-items: center; }
+.tl-pin.star::after { content: attr(data-n); font: 700 10px/1 var(--mono); color: #171717; }
+.tl-ahead { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; transform: rotate(45deg); border: 1.5px solid var(--t2); background: var(--bg); }
+.tl-ahead.k-end { border-color: var(--gs); background: var(--gs); }
+.tl-arcs { display: block; width: 100%; height: 14px; overflow: visible; }
+.tl-arcs path { fill: none; stroke: var(--ok); stroke-width: 1.5; vector-effect: non-scaling-stroke; opacity: .8; }
+.tl-axis { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--t3); margin-top: 2px; }
+.tl-detail { display: grid; grid-template-columns: 44px 1fr 44px; gap: 6px; align-items: center; margin-top: 8px; min-height: 44px; background: var(--bg-n); border-radius: 10px; padding: 4px; }
+.tl-detail > .cap { grid-column: 1 / -1; padding: 6px 8px; }
+.tl-txt { font-size: 13px; line-height: 1.45; color: var(--t2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tl-nav { min-height: 44px; border: 0; border-radius: 8px; background: var(--bg); color: var(--t); font-size: 20px; }
+.tl-nav:disabled { opacity: .3; cursor: default; }
+.tl-k { display: inline-flex; height: 20px; align-items: center; padding: 0 7px; border-radius: 9999px; font-size: 11px; font-weight: 700; background: var(--bg-a); color: var(--t2); }
+.tl-k.k-echo { background: var(--ok-sub); color: var(--ok); }
+.tl-k.k-bad { background: var(--bad-sub); color: var(--bad-t); }
+.tl-k.k-good { background: var(--warn-sub); color: var(--warn-t); }
+.tl.static { padding: 0; border: 0; }
+.tl.static .tl-pin { cursor: default; }
+/* 이번 달 변화: 막대 위 겹침 + 숫자 옆 ▲▼ */
+#stats .stat, #statsM .stat { grid-template-columns: 40px 1fr 52px; }
+.stat .bar { position: relative; }
+.bar > .gd { position: absolute; top: 0; bottom: 0; }
+.bar > .gd.up { background: var(--ok); }
+.bar > .gd.dn { background: repeating-linear-gradient(135deg, var(--bad) 0 2px, transparent 2px 4px); }
+.dd { font: 600 11px var(--mono); margin-left: 3px; }
+.dd.up { color: var(--ok); }
+.dd.dn { color: var(--bad-t); }
+
+/* 전역 화면 갈림길: 그때 다른 걸 골랐다면 (src/fork.js) */
+.report .forks { display: flex; flex-direction: column; gap: 10px; }
+.report .fork { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.report .fork-h { display: flex; align-items: center; gap: 8px; }
+.report .fork-h b { flex: 1; font-size: 15px; }
+.report .fork-n { width: 22px; height: 22px; border-radius: 50%; background: var(--warn); color: #171717; border: 2px solid var(--t); display: grid; place-items: center; font: 700 11px var(--mono); flex: none; }
+.report .fork-c { display: flex; gap: 6px; flex-wrap: wrap; }
+.report .fork-c .chip { height: auto; min-height: 28px; white-space: normal; padding: 4px 10px; }
+.report .fork-now { margin: 0; padding: 8px 12px; border-left: 3px solid var(--warn); background: var(--bg-n); font-size: 13.5px; color: var(--t2); border-radius: 0 8px 8px 0; }
+.report .fork-life { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; color: var(--t2); }
+.report .fork-life .line { flex: 1 1 200px; }
+.report .fork-d { margin: 0; padding-left: 18px; font-size: 13px; color: var(--t); }
