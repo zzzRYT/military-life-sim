@@ -322,7 +322,8 @@ import { LORE_EVENTS, LORE_ECHOES } from './events-lore.js';
 import { ROUTINE_EVENTS, ROUTINE_ECHOES } from './events-routine.js';
 import { NATION_EVENTS } from './events-nation.js';
 import { REL_EVENTS, REL_ECHOES } from './events-rel.js';
-EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS, ...SPECIALTY_EVENTS, ...DUTY_EVENTS, ...LEAVE_EVENTS, ...HEALTH_EVENTS, ...PEOPLE_EVENTS, ...TAIL_EVENTS, ...ERA_EVENTS, ...RANK_EVENTS, ...CRISIS_EVENTS, ...LATE_EVENTS, ...SPIRAL_EVENTS, ...LORE_EVENTS, ...ROUTINE_EVENTS, ...NATION_EVENTS, ...REL_EVENTS);
+import { ENDING_EVENTS } from './events-endings.js';
+EVENTS.push(...SOLDIER_EVENTS, ...HOBBY_BOND_EVENTS, ...BOOTCAMP_EVENTS, ...PLACE_EVENTS, ...SPECIALTY_EVENTS, ...DUTY_EVENTS, ...LEAVE_EVENTS, ...HEALTH_EVENTS, ...PEOPLE_EVENTS, ...TAIL_EVENTS, ...ERA_EVENTS, ...RANK_EVENTS, ...CRISIS_EVENTS, ...LATE_EVENTS, ...SPIRAL_EVENTS, ...LORE_EVENTS, ...ROUTINE_EVENTS, ...NATION_EVENTS, ...REL_EVENTS, ...ENDING_EVENTS);
 
 for (const e of EVENTS) {
   const echo = [...(ECHOES[e.id] ?? []), ...(PLACE_ECHOES[e.id] ?? []), ...(PEOPLE_ECHOES[e.id] ?? []), ...(LORE_ECHOES[e.id] ?? []), ...(ROUTINE_ECHOES[e.id] ?? []), ...(REL_ECHOES[e.id] ?? [])]; // 흔적 문구가 먼저, 지역 문구는 그다음

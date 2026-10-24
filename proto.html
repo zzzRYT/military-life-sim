@@ -390,7 +390,7 @@ function render() {
   const dleft = Math.max(0, Math.round((dis - now) / 864e5));
   const pct = Math.min(100, Math.max(0, ((now - enl) / (dis - enl)) * 100));
   const rank = rankName(rules, S.status, S.rank);
-  const END = { court: '복무 중단', medical: '의병 전역', unfit: '부적합 전역', family: '의가사 전역', shortened: '단축 전역', prison: '육군교도소', grade4: '4급 보충역' };
+  const END = { court: '복무 중단', medical: '의병 전역', unfit: '부적합 전역', family: '의가사 전역', shortened: '단축 전역', prison: '육군교도소', grade4: '4급 보충역', hospital: '수도병원 입원', transfer: '전입', cadre: '간부 전직' };
   $('dday').textContent = S.ending ? END[S.ending] : S.phase === 'end' ? '전역' : `D-${dleft}`;
   $('subline').innerHTML = `${rank} · ${fmtYm(S.ym)} · ${PHASE[S.phase]}<span class="cap">1개월 ≈ ${Math.round(msPerMonth() / 1000 / (speed || 1))}초</span>`;
   $('prog').style.width = pct + '%';
