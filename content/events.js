@@ -279,6 +279,7 @@ export const EVENTS = [
       if (k === 'endure') return { t: '이를 악물고 하루를 넘겼습니다.', fx: { mind: -3 } };
       // 탈영: 이틀 안 자진 복귀(무단이탈 처리) vs 체포 후 군사재판 (가정 50:50)
       if (roll(S, 0.5)) return { t: '이틀 만에 스스로 돌아왔습니다. 무단이탈로 처리되었습니다.', fx: { mind: -5 }, punish: { kind: 'drill', n: 15 }, ban: 1 };
+      if (roll(S, 0.6)) return { t: `${mp(S)}에 체포되어 군무이탈 혐의로 기소되었습니다. 군사재판에서 징역이 선고됐고, 호송차는 육군교도소로 향했습니다.`, fx: { mind: -25 }, ending: 'prison' };
       return { t: `${mp(S)}에 체포되어 군무이탈 혐의로 기소되었습니다.`, ending: 'court' };
     } },
 
