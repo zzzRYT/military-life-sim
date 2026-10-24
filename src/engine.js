@@ -168,6 +168,8 @@ export const ENDINGS = {
   unfit: '현역복무 부적합 전역',
   family: '의가사 전역 (전시근로역 편입)',
   shortened: '복무기간 단축 전역 (보충역 편입)',
+  prison: '육군교도소 수감 — 징역형이 확정되어 군 생활이 끝났습니다.',
+  grade4: '4급 보충역 — 현역이 아닌 사회복무요원으로 소집되어 군 생활이 끝났습니다.',
 };
 
 /** 로그 줄에 이 결과가 바꾼 수치를 단다 (화면의 변화 칩용) — 0은 뺀다 */
@@ -321,6 +323,8 @@ export function enlist(S, rules, enlistIso, rngFn) {
   else if (S.flags.ageGap <= -2) log(S, `동기들보다 ${-S.flags.ageGap}살 어린 나이에 입영했다`);
 }
 
+const SOCIAL_TEXT = '사회복무요원으로 구청·복지관에서 출퇴근하며 복무합니다. 군복은 입지 않습니다. 이 시절엔 4급이 현역을 자원할 길이 없었습니다.';
+
 /**
  * 병역판정 (01-product-spec §3-1·3-2). 입영 전에 한 번. 7급(재신체검사)은 1~6급 비율로 다시 뽑는다.
  * 4급 보충역은 2021-10-14부터 현역 자원 가능 [S22] — 그 전(가정: 2021년 입대까지)은 사회복무요원.
@@ -339,8 +343,13 @@ export function judge(S, rules, year) {
     log(S, '4급 보충역 판정 — 사회복무요원 대신 현역을 자원했습니다');
     return { serve: true };
   }
+  if (S.grade === 4) {
+    // 현역을 자원할 길이 없던 시절의 4급: 판은 그대로 시작하고, 입소한 첫 달에 4급 엔딩으로 끝난다 (planMonth의 'social' 항목)
+    log(S, '4급 보충역 판정 — 사회복무요원 대상입니다');
+    S.flags.grade4 = true;
+    return { serve: true, kind: 'social', title: '4급 · 보충역', text: SOCIAL_TEXT };
+  }
   const E = {
-    4: { kind: 'social', title: '4급 · 보충역', text: `사회복무요원으로 구청·복지관에서 출퇴근하며 복무합니다. 군복은 입지 않습니다.${year < 2022 ? ' 이 시절엔 4급이 현역을 자원할 길이 없었습니다.' : ''}` },
     5: { kind: 'wartime', title: '5급 · 전시근로역', text: '평시에는 군대에 가지 않습니다. 전시에만 군사 지원 업무에 동원됩니다.' },
     6: { kind: 'exempt', title: '6급 · 병역 면제', text: '병역 의무가 면제되었습니다. 입영 통지서는 오지 않습니다.' },
   }[S.grade];
@@ -547,6 +556,7 @@ export function planMonth(S, rules, events = []) {
   if (S.phase === 'serve' && S.dates && S.dates.discharge.slice(0, 7) === ym) {
     S.queue.push({ at: 0.9, kind: 'discharge' });
   }
+  if (S.phase === 'train' && S.flags.grade4) S.queue.push({ at: 0.5, kind: 'social' }); // 4급 보충역: 입소한 첫 달에 사회복무요원으로 돌려보낸다
   if (S.phase === 'train' || S.phase === 'serve') {
     S.queue.push({ at: 0.85, kind: 'pay' }); // 전역(0.9)보다 먼저 — 마지막 달 적금도 만기에 포함
   }
@@ -598,6 +608,12 @@ export function fire(S, rules, item, opts = {}) {
       }
       S.phase = 'end';
       log(S, `전역 (${S.dates.discharge})`);
+      break;
+    }
+    case 'social': {
+      log(S, `사회복무요원 소집 통지서를 받았습니다. ${SOCIAL_TEXT.replace(' 이 시절엔 4급이 현역을 자원할 길이 없었습니다.', '')}`);
+      S.log.at(-1).at = atNow(S, null, S.phase);
+      applyOut(S, { ending: 'grade4' });
       break;
     }
     case 'event': {

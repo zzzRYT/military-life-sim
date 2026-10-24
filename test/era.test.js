@@ -109,7 +109,9 @@ test('judge: 7급은 재검, 4급은 2022년부터 현역 자원, 5·6급은 현
   const r = judge(S, rules, 2010);
   assert.ok(S.grade >= 1 && S.grade <= 6);
   assert.equal(r.serve, S.grade <= 3);
-  assert.equal(judge(newGame('j4', rules, { birth: '2006-05-01', grade: 4 }), rules, 2010).serve, false);
+  const j4 = judge(newGame('j4', rules, { birth: '2006-05-01', grade: 4 }), rules, 2010);
+  assert.equal(j4.serve, true); // 4급은 시작 전에 끝나지 않는다 — 시작한 뒤 4급 엔딩으로 끝난다
+  assert.equal(j4.kind, 'social');
   assert.equal(judge(newGame('j4b', rules, { birth: '2006-05-01', grade: 4 }), rules, 2024).serve, true);
   assert.equal(judge(newGame('j6', rules, { birth: '2006-05-01', grade: 6 }), rules, 2024).kind, 'exempt');
 });
